@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
@@ -17,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var popover: NSPopover!
     private var preferencesWindow: PreferencesWindow!
     private var onboardingWindow: OnboardingWindow!
+    private var pauseTimer: Timer?
+    private var isPaused: Bool = false
     
     func applicationDidFinishLaunching(_ notification: Notification) {
                 
@@ -69,12 +70,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         aboutMenuItem.view = hostedAboutView
         statusBarMenu.addItem(aboutMenuItem)
         statusBarMenu.addItem(NSMenuItem.separator())
-        let updates = NSMenuItem(
-            title: "Check for updates...",
-            action: #selector(SUUpdater.checkForUpdates(_:)),
-            keyEquivalent: "")
-        updates.target = SUUpdater.shared()
-        statusBarMenu.addItem(updates)
         statusBarMenu.addItem(
             withTitle: "Preferences...",
             action: #selector(showPreferences),
@@ -171,40 +166,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let barAnimation = button.subviews[0] as? StatusBarAnimation else { return }
         guard let marqueeText = button.subviews[1] as? MenuMarqueeText else { return }
         
-        // Calculate string width
+        // Playback state has changed
+        barAnimation.isPlaying = isPlaying
+        
+        // Calculate menu bar item dimensions
         let font = Constants.StatusBar.marqueeFont
         let stringWidth = titleAndArtist.stringWidth(with: font)
-        
-        // Set Marquee text with new track data
-        marqueeText.text = titleAndArtist
-        
-        // Hide the track data when paused
-        if !isPlaying {
-            marqueeText.text = ""
-            button.frame = NSRect(x: 0, y: 0, width: barAnimation.bounds.width + 16, height: button.bounds.height)
-            barAnimation.isPlaying = false
-            return
-        }
-        
         let limit = Constants.StatusBar.statusBarButtonLimit
         let animWidth = Constants.StatusBar.barAnimationWidth
         let padding = Constants.StatusBar.statusBarButtonPadding
         
+        // Set Marquee text with new track data
+        marqueeText.text = titleAndArtist
+        
+        // Handle empty track info case
         if titleAndArtist.isEmpty {
-            barAnimation.isPlaying = false
+            marqueeText.text = ""
             button.frame = NSRect(x: 0, y: 0, width: barAnimation.bounds.width + 16, height: button.bounds.height)
             return
         }
         
-        // Set button frame
-        button.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: stringWidth < limit ? stringWidth + animWidth + 3*padding : limit + animWidth + 3*padding,
-            height: button.bounds.height)
-        barAnimation.isPlaying = isPlaying
-        marqueeText.menubarBounds = button.bounds
-
+        // Handle playback state changes
+        if isPlaying {
+            // Cancel any existing timers
+            pauseTimer?.invalidate()
+            pauseTimer = nil
+            isPaused = false
+            
+            // Show track info immediately when playback resumes
+            marqueeText.text = titleAndArtist
+            button.frame = NSRect(
+                x: 0,
+                y: 0,
+                width: stringWidth < limit ? stringWidth + animWidth + 3*padding : limit + animWidth + 3*padding,
+                height: button.bounds.height)
+            marqueeText.menubarBounds = button.bounds
+        } else {
+            // Track is paused
+            isPaused = true
+            
+            // Show track info when first paused
+            marqueeText.text = titleAndArtist
+            button.frame = NSRect(
+                x: 0,
+                y: 0,
+                width: stringWidth < limit ? stringWidth + animWidth + 3*padding : limit + animWidth + 3*padding,
+                height: button.bounds.height)
+            marqueeText.menubarBounds = button.bounds
+            
+            // Cancel any existing timer first
+            pauseTimer?.invalidate()
+            
+            // Create new timer to hide track info after 30 seconds
+            pauseTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: false) { [weak self] _ in
+                guard let self = self, self.isPaused else { return }
+                
+                //Hide text and resize after 30 seconds
+                marqueeText.text = ""
+                button.frame = NSRect(x: 0, y: 0, width: barAnimation.bounds.width + 16, height: button.bounds.height)
+            }
+        }
+        
+        // Make sure to invalidate the timer when app terminates
+        func applicationWillTerminate(_ notification: Notification) {
+            pauseTimer?.invalidate()
+            pauseTimer = nil
+        }
     }
     
     // Called when the status bar appearance is changed to update bar animation color and marquee text color

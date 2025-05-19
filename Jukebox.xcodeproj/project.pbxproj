@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		E800A8B22732811D00DBDF0E /* MenuMarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = E800A8B12732811D00DBDF0E /* MenuMarqueeText.swift */; };
-		E80AD61D27859020001FC303 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E80AD61C27859020001FC303 /* Sparkle */; };
 		E81CFEC227A12ED60030C448 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81CFEC127A12ED60030C448 /* Helper.swift */; };
 		E82271BC2735514400D1795D /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82271BB2735514400D1795D /* Constants.swift */; };
 		E82271C3273567F000D1795D /* VisualizerStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82271C2273567F000D1795D /* VisualizerStyle.swift */; };
@@ -82,7 +81,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E80AD61D27859020001FC303 /* Sparkle in Frameworks */,
 				E8767C66273688FB00E39D17 /* LaunchAtLogin in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -244,7 +242,6 @@
 			name = Jukebox;
 			packageProductDependencies = (
 				E8767C65273688FB00E39D17 /* LaunchAtLogin */,
-				E80AD61C27859020001FC303 /* Sparkle */,
 			);
 			productName = Jukebox;
 			productReference = E8F5722727166E0D00C5DF9C /* Jukebox.app */;
@@ -276,7 +273,6 @@
 			mainGroup = E8F5721E27166E0D00C5DF9C;
 			packageReferences = (
 				E8767C64273688FB00E39D17 /* XCRemoteSwiftPackageReference "LaunchAtLogin" */,
-				E80AD61B27859020001FC303 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = E8F5722827166E0D00C5DF9C /* Products */;
 			projectDirPath = "";
@@ -575,14 +571,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E80AD61B27859020001FC303 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = exactVersion;
-				version = 1.27.1;
-			};
-		};
 		E8767C64273688FB00E39D17 /* XCRemoteSwiftPackageReference "LaunchAtLogin" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin";
@@ -594,11 +582,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E80AD61C27859020001FC303 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E80AD61B27859020001FC303 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
 		E8767C65273688FB00E39D17 /* LaunchAtLogin */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E8767C64273688FB00E39D17 /* XCRemoteSwiftPackageReference "LaunchAtLogin" */;
