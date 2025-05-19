@@ -178,6 +178,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Set Marquee text with new track data
         marqueeText.text = titleAndArtist
         
+        // Hide the track data when paused
+        if !isPlaying {
+            marqueeText.text = ""
+            button.frame = NSRect(x: 0, y: 0, width: barAnimation.bounds.width + 16, height: button.bounds.height)
+            barAnimation.isPlaying = false
+            return
+        }
+        
         let limit = Constants.StatusBar.statusBarButtonLimit
         let animWidth = Constants.StatusBar.barAnimationWidth
         let padding = Constants.StatusBar.statusBarButtonPadding
