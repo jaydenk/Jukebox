@@ -6,7 +6,7 @@
 ## About
 Jukebox is a macOS application that allows you to display and control the currently playing song from Spotify or Apple Music in the menu bar.
 
-**Jukebox requires macOS 11 Big Sur or greater.**
+**Jukebox requires macOS 13 Ventura or greater.**
 
 ## Install
 [Download](https://github.com/Jaysce/Jukebox/releases/download/v0.9.5/Jukebox.0.9.5.dmg)
@@ -30,5 +30,5 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Attributions
 - This project uses [Sparkle](https://sparkle-project.org) for update delivery
-- This project makes use of [LaunchAtLogin](https://github.com/sindresorhus/LaunchAtLogin)
+- This project makes use of [LaunchAtLogin-Modern](https://github.com/sindresorhus/LaunchAtLogin-Modern)
 - Basewarp shader written by [trinketMage](https://www.shadertoy.com/view/tdG3Rd)
