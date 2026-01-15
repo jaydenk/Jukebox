@@ -14,6 +14,7 @@ struct PreferencesView: View {
     
     @AppStorage("visualizerStyle") private var visualizerStyle = VisualizerStyle.albumArt
     @AppStorage("connectedApp") private var connectedApp = ConnectedApps.spotify
+    @AppStorage("nowPlayingAlwaysOnTop") private var nowPlayingAlwaysOnTop = false
     @State private var alertTitle = Text("Title")
     @State private var alertMessage = Text("Message")
     @State private var showingAlert = false
@@ -94,7 +95,7 @@ struct PreferencesView: View {
                 Button {
                     NSWorkspace.shared.open(Constants.AppInfo.website)
                 } label: {
-                    Text("Website").font(.system(size: 12))
+                    Text("Original Website").font(.system(size: 12))
                 }
                 .buttonStyle(LinkButtonStyle())
             }
@@ -112,6 +113,7 @@ struct PreferencesView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                 LaunchAtLogin.Toggle()
+                Toggle("Keep floating window on top", isOn: $nowPlayingAlwaysOnTop)
                 HStack {
                     Picker("Connect Jukebox to", selection: $connectedApp) {
                         ForEach(ConnectedApps.allCases, id: \.self) { value in

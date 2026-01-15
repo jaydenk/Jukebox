@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     
     // User Defaults
     @AppStorage("visualizerStyle") private var visualizerStyle: VisualizerStyle = .albumArt
     @AppStorage("connectedApp") private var connectedApp: ConnectedApps = .spotify
+    @AppStorage("nowPlayingPinned") private var nowPlayingPinned = false
     
     // View Model
     @ObservedObject var contentViewVM: ContentViewModel
@@ -23,7 +25,6 @@ struct ContentView: View {
     let primaryOpacity = 0.8
     let primaryOpacity2 = 0.6
     let secondaryOpacity = 0.4
-    let ternaryOpacity = 0.2
     
     var body: some View {
         
@@ -52,8 +53,8 @@ struct ContentView: View {
                             Rectangle()
                                 .foregroundColor(
                                     visualizerStyle != .none
-                                    ? .white.opacity(ternaryOpacity)
-                                    : .primary.opacity(ternaryOpacity))
+                                    ? .white.opacity(0.2)
+                                    : .primary.opacity(0.2))
                                 .frame(width: 240, height: 240)
                                 .cornerRadius(8)
                             
@@ -108,13 +109,19 @@ struct ContentView: View {
                             .background(VisualEffectView(material: .popover, blendingMode: .withinWindow))
                             .cornerRadius(100)
                             .opacity(isShowingPlaybackControls ? 1 : 0)
-                            
-                        }
-                        .onHover { _ in
-                            withAnimation(.linear(duration: 0.1)) {
-                                self.isShowingPlaybackControls.toggle()
+
+                            if contentViewVM.isRunning {
+                                pinButton
+                                    .padding(8)
+                                    .frame(width: 240, height: 240, alignment: .bottomTrailing)
+                                    .opacity(isShowingPlaybackControls ? 1 : 0)
                             }
                             
+                        }
+                        .onHover { hovering in
+                            withAnimation(.linear(duration: 0.1)) {
+                                isShowingPlaybackControls = hovering
+                            }
                         }
                         
                         Spacer()
@@ -148,6 +155,21 @@ struct ContentView: View {
         .onReceive(contentViewVM.timer) { _ in
             contentViewVM.getCurrentSeekerPosition()
         }
+    }
+
+    private var pinButton: some View {
+        Button {
+            NSApplication.shared.sendAction(#selector(AppDelegate.togglePinnedMode), to: nil, from: nil)
+        } label: {
+            Image(systemName: nowPlayingPinned ? "pin.square.fill" : "pin.square")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.primary.opacity(primaryOpacity))
+        }
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(VisualEffectView(material: .popover, blendingMode: .withinWindow))
+        .cornerRadius(100)
     }
     
     private func formatSecondsForDisplay(_ seconds: Double) -> String {

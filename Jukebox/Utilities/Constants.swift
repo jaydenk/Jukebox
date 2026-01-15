@@ -12,7 +12,7 @@ enum Constants {
     
     enum AppInfo {
         static let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        static let repo = URL(string: "https://github.com/Jaysce/Jukebox")!
+        static let repo = URL(string: "https://github.com/jaydenk/Jukebox")!
         static let website = URL(string: "https://jaysce.dev/projects/jukebox")!
     }
     
@@ -21,6 +21,12 @@ enum Constants {
         static let barAnimationWidth: CGFloat = 14
         static let statusBarButtonLimit: CGFloat = 200
         static let statusBarButtonPadding: CGFloat = 8
+    }
+
+    enum NowPlaying {
+        static let windowSize = CGSize(width: 240, height: 240)
+        static let cornerRadius: CGFloat = 12
+        static let controlPadding: CGFloat = 10
     }
     
     enum Spotify {

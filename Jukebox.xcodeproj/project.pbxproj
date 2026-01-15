@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D6F0E4A62F16F9E300123456 /* NowPlayingCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F0E4A52F16F9E300123456 /* NowPlayingCompactView.swift */; };
 		E800A8B22732811D00DBDF0E /* MenuMarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = E800A8B12732811D00DBDF0E /* MenuMarqueeText.swift */; };
 		E81CFEC227A12ED60030C448 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81CFEC127A12ED60030C448 /* Helper.swift */; };
 		E82271BC2735514400D1795D /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82271BB2735514400D1795D /* Constants.swift */; };
@@ -41,6 +42,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D6F0E4A52F16F9E300123456 /* NowPlayingCompactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingCompactView.swift; sourceTree = "<group>"; };
 		E800A8B12732811D00DBDF0E /* MenuMarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuMarqueeText.swift; sourceTree = "<group>"; };
 		E81CFEC127A12ED60030C448 /* Helper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helper.swift; sourceTree = "<group>"; };
 		E82271BB2735514400D1795D /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 			children = (
 				E8FB63F7272BEF92006F28B8 /* AboutView.swift */,
 				E8F5722C27166E0D00C5DF9C /* ContentView.swift */,
+				D6F0E4A52F16F9E300123456 /* NowPlayingCompactView.swift */,
 				E8A013DE272AB23500B25B63 /* MetalView.swift */,
 				E8FB63F3272BB97C006F28B8 /* PreferencesView.swift */,
 				E8FB63F5272BC7BD006F28B8 /* VisualEffectView.swift */,
@@ -307,6 +310,7 @@
 				E8F57242271678C800C5DF9C /* PressButtonStyle.swift in Sources */,
 				E8A337182797D59E0094A6D7 /* MusicApplication.swift in Sources */,
 				E8F5722D27166E0D00C5DF9C /* ContentView.swift in Sources */,
+				D6F0E4A62F16F9E300123456 /* NowPlayingCompactView.swift in Sources */,
 				E8FB63F6272BC7BD006F28B8 /* VisualEffectView.swift in Sources */,
 				E89C3499279B71E6000897F0 /* NSImage+Empty.swift in Sources */,
 				E8F572402716785700C5DF9C /* ChipStyle.swift in Sources */,
@@ -460,7 +464,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.0;
+				CURRENT_PROJECT_VERSION = 1.0.1;
 				DEVELOPMENT_ASSET_PATHS = "\"Jukebox/Preview Content\"";
 				DEVELOPMENT_TEAM = X72LEXP4DY;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -477,7 +481,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jaydenkerr.Jukebox;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -499,7 +503,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1.0;
+				CURRENT_PROJECT_VERSION = 1.0.1;
 				DEVELOPMENT_ASSET_PATHS = "\"Jukebox/Preview Content\"";
 				DEVELOPMENT_TEAM = X72LEXP4DY;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -516,7 +520,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jaydenkerr.Jukebox;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

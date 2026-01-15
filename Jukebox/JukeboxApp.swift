@@ -7,13 +7,25 @@
 
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     
     @AppStorage("viewedOnboarding") var viewedOnboarding: Bool = false
+    @AppStorage("nowPlayingPinned") private var nowPlayingPinned = false
+    @AppStorage("nowPlayingAlwaysOnTop") private var nowPlayingAlwaysOnTop = false {
+        didSet {
+            applyNowPlayingWindowLevel()
+        }
+    }
+    @AppStorage("nowPlayingWindowHasPosition") private var nowPlayingWindowHasPosition = false
+    @AppStorage("nowPlayingWindowX") private var nowPlayingWindowX = 0.0
+    @AppStorage("nowPlayingWindowY") private var nowPlayingWindowY = 0.0
     @StateObject var contentViewVM = ContentViewModel()
     private var statusBarItem: NSStatusItem!
     private var statusBarMenu: NSMenu!
     private var popover: NSPopover!
+    private var nowPlayingWindow: NowPlayingWindow!
+    private var popoverHostView: NSHostingView<ContentView>!
+    private var floatingHostView: NSHostingView<NowPlayingCompactView>!
     private var preferencesWindow: PreferencesWindow!
     private var onboardingWindow: OnboardingWindow!
     private var pauseTimer: Timer?
@@ -38,26 +50,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Setup
         setupContentView()
         setupStatusBar()
+        applyNowPlayingWindowLevel()
         
     }
     
     // MARK: - Setup
     
     private func setupContentView() {
-        let frameSize = NSSize(width: 272, height: 350)
+        let popoverSize = NSSize(width: 272, height: 350)
+        let floatingSize = Constants.NowPlaying.windowSize
         
-        // Initialize ContentView
-        let hostedContentView = NSHostingView(rootView: ContentView(contentViewVM: contentViewVM))
-        hostedContentView.frame = NSRect(x: 0, y: 0, width: frameSize.width, height: frameSize.height)
+        // Initialize Popover Content
+        popoverHostView = NSHostingView(rootView: ContentView(contentViewVM: contentViewVM))
+        popoverHostView.frame = NSRect(x: 0, y: 0, width: popoverSize.width, height: popoverSize.height)
         
-        // Initialize Popover
         popover = NSPopover()
-        popover.contentSize = frameSize
+        popover.contentSize = popoverSize
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = NSViewController()
-        popover.contentViewController?.view = hostedContentView
-        popover.contentViewController?.view.window?.makeKey()
+        popover.contentViewController?.view = popoverHostView
+
+        // Initialize Floating Window Content
+        floatingHostView = NSHostingView(rootView: NowPlayingCompactView(contentViewVM: contentViewVM))
+        floatingHostView.frame = NSRect(x: 0, y: 0, width: floatingSize.width, height: floatingSize.height)
+
+        nowPlayingWindow = NowPlayingWindow(
+            contentRect: NSRect(x: 0, y: 0, width: floatingSize.width, height: floatingSize.height)
+        )
+        nowPlayingWindow.contentView = floatingHostView
+        nowPlayingWindow.delegate = self
     }
     
     private func setupStatusBar() {
@@ -128,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusBarItem.button?.performClick(nil)
             
         default:
-            togglePopover(statusBarItem.button)
+            toggleNowPlayingPresentation(statusBarItem.button)
         }
         
     }
@@ -138,18 +160,95 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusBarItem.menu = nil
     }
     
-    // Toggle open and close of popover
-    @objc func togglePopover(_ sender: NSStatusBarButton?) {
-        
+    // Toggle open and close of popover or floating window
+    @objc func toggleNowPlayingPresentation(_ sender: NSStatusBarButton?) {
         guard let statusBarItemButton = sender else { return }
-        
-        if popover.isShown {
-            popover.performClose(statusBarItemButton)
+
+        if nowPlayingPinned {
+            if nowPlayingWindow.isVisible {
+                nowPlayingWindow.orderOut(nil)
+            } else {
+                showNowPlayingWindow(relativeTo: statusBarItemButton)
+            }
         } else {
-            popover.show(relativeTo: statusBarItemButton.bounds, of: statusBarItemButton, preferredEdge: .minY)
-            NSApplication.shared.activate(ignoringOtherApps: true)
+            if popover.isShown {
+                popover.performClose(statusBarItemButton)
+            } else {
+                popover.show(relativeTo: statusBarItemButton.bounds, of: statusBarItemButton, preferredEdge: .minY)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
         }
-        
+    }
+
+    @objc func togglePinnedMode(_ sender: Any?) {
+        nowPlayingPinned.toggle()
+
+        if nowPlayingPinned {
+            if popover.isShown, let button = statusBarItem.button {
+                popover.performClose(button)
+            }
+            if let button = statusBarItem.button {
+                showNowPlayingWindow(relativeTo: button)
+            }
+        } else {
+            nowPlayingWindow.orderOut(nil)
+        }
+    }
+
+    private func showNowPlayingWindow(relativeTo button: NSStatusBarButton) {
+        applyNowPlayingWindowLevel()
+        if let savedOrigin = savedNowPlayingWindowOrigin() {
+            nowPlayingWindow.setFrameOrigin(savedOrigin)
+        } else {
+            positionNowPlayingWindow(relativeTo: button)
+        }
+        nowPlayingWindow.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    private func positionNowPlayingWindow(relativeTo button: NSStatusBarButton) {
+        guard let buttonWindow = button.window, let screen = buttonWindow.screen else { return }
+
+        let buttonRect = button.convert(button.bounds, to: nil)
+        let screenRect = buttonWindow.convertToScreen(buttonRect)
+        let windowSize = nowPlayingWindow.frame.size
+        let screenFrame = screen.visibleFrame
+
+        var x = screenRect.midX - (windowSize.width / 2)
+        var y = screenRect.minY - windowSize.height - 6
+
+        x = min(max(x, screenFrame.minX), screenFrame.maxX - windowSize.width)
+        y = min(max(y, screenFrame.minY), screenFrame.maxY - windowSize.height)
+
+        nowPlayingWindow.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    private func savedNowPlayingWindowOrigin() -> NSPoint? {
+        guard nowPlayingWindowHasPosition else { return nil }
+        return NSPoint(x: nowPlayingWindowX, y: nowPlayingWindowY)
+    }
+
+    private func storeNowPlayingWindowOrigin(_ origin: NSPoint) {
+        nowPlayingWindowX = origin.x
+        nowPlayingWindowY = origin.y
+        nowPlayingWindowHasPosition = true
+    }
+
+    private func applyNowPlayingWindowLevel() {
+        if nowPlayingWindow == nil {
+            return
+        }
+        nowPlayingWindow.level = nowPlayingAlwaysOnTop ? .floating : .normal
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        storeNowPlayingWindowOrigin(window.frame.origin)
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        storeNowPlayingWindowOrigin(window.frame.origin)
     }
     
     // Updates the title of the status bar with the currently playing track
@@ -297,6 +396,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.onboardingWindow = nil
     }
     
+}
+
+final class NowPlayingWindow: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+
+    init(contentRect: NSRect) {
+        super.init(
+            contentRect: contentRect,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+
+        isReleasedWhenClosed = false
+        isMovableByWindowBackground = true
+        hidesOnDeactivate = false
+        backgroundColor = .clear
+        isOpaque = false
+        hasShadow = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    }
 }
 
 // MARK: - SwiftUI App Entry Point
