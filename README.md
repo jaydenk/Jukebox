@@ -9,7 +9,7 @@ Jukebox is a macOS application that allows you to display and control the curren
 **Jukebox requires macOS 13 Ventura or greater.**
 
 ## Install
-[Download](https://github.com/Jaysce/Jukebox/releases/download/v0.9.5/Jukebox.0.9.5.dmg)
+[Download](https://github.com/jaydenk/Jukebox/releases/latest)
 
 ## Usage
 
