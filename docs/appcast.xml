@@ -5,21 +5,7 @@
     <link>https://github.com/jaydenk/Jukebox</link>
     <description>Jukebox update feed</description>
     <language>en</language>
-    <!--
-      To add a new release:
-
-      1. Build and archive in Xcode (Product > Archive > Distribute > Direct Distribution)
-      2. Zip the .app:
-           zip -r -y Jukebox-X.Y.Z.zip Jukebox.app
-      3. Sign the zip:
-           find ~/Library/Developer/Xcode/DerivedData -name "sign_update" -path "*/Sparkle*" 2>/dev/null
-           /path/to/sign_update Jukebox-X.Y.Z.zip
-         This prints: sparkle:edSignature="..." length="..."
-      4. Create a GitHub Release (tag: vX.Y.Z), upload Jukebox-X.Y.Z.zip
-      5. Add an <item> below with the signature, length, and GitHub Release asset URL
-      6. Commit and push docs/appcast.xml to main
-    -->
-    <item>
+<item>
       <title>Version 1.1.0</title>
       <description>Floating now playing window, improved multi-monitor support, three-state playback indicator, and automatic updates.</description>
       <pubDate>Tue, 31 Mar 2026 03:56:03 +0000</pubDate>
