@@ -18,7 +18,9 @@ Jukebox is a macOS application that allows you to display and control the curren
 </p>
 
 
-The app shows the currently playing song in the menu bar. Clicking the menu bar item will present a window displaying details of the current track. Hovering over the album art gives you controls.
+The app shows the currently playing song in the menu bar with an animated playback indicator. Clicking the menu bar item will present a window displaying details of the current track. Hovering over the album art gives you controls.
+
+You can also pin the now playing view as a floating window that stays visible while you work, with an optional always-on-top mode.
 
 <p align="center">
   <img src="Images/preferences.png" width="500">
