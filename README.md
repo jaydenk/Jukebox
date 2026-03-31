@@ -1,22 +1,24 @@
-<p align="center">
-  <img src="Images/icon.png" width="350">
-</p>
+<img src="Images/icon.png" width="80" align="left">
 
+# Jukebox
 
-## About
-Jukebox is a macOS application that allows you to display and control the currently playing song from Spotify or Apple Music in the menu bar.
+A macOS menu bar app for displaying and controlling the currently playing song from Spotify or Apple Music.
 
-**Jukebox requires macOS 13 Ventura or greater.**
+<br clear="left"/>
+
+**Requires macOS 13 Ventura or later.**
 
 ## Install
-[Download](https://github.com/jaydenk/Jukebox/releases/latest)
+
+[Download the latest release](https://github.com/jaydenk/Jukebox/releases/latest)
+
+Jukebox checks for updates automatically via Sparkle.
 
 ## Usage
 
 <p align="center">
   <img src="Images/example.png" width="400">
 </p>
-
 
 The app shows the currently playing song in the menu bar with an animated playback indicator. Clicking the menu bar item will present a window displaying details of the current track. Hovering over the album art gives you controls.
 
@@ -30,7 +32,23 @@ The preferences menu can be opened by right clicking the menu bar item.
 From here you can change which app Jukebox gets music data from and the background that appears behind the album art.
 Clicking the button next to the connect option gives you the prompt to connect the music app you choose.
 
+## Changelog
+
+### v1.1.0
+
+- **Floating now playing window** — pin the now playing view as a floating window that stays visible while you work, with optional always-on-top mode and position memory
+- **Improved multi-monitor support** — status bar icon and text now correctly fade on inactive screens, matching standard macOS behaviour
+- **Three-state playback indicator** — animated bars when playing, pause icon when paused, stop icon when the music source is closed
+- **Automatic updates** — Jukebox now checks for updates via Sparkle
+- **Bug fixes** — fixed animation continuing after the music source was stopped or closed
+
+### v1.0.1
+
+- 30-second delay before hiding track info after pausing
+- Launch at login support via LaunchAtLogin-Modern
+
 ## Attributions
-- This project uses [Sparkle](https://sparkle-project.org) for update delivery
-- This project makes use of [LaunchAtLogin-Modern](https://github.com/sindresorhus/LaunchAtLogin-Modern)
-- Basewarp shader written by [trinketMage](https://www.shadertoy.com/view/tdG3Rd)
+
+- [Sparkle](https://sparkle-project.org) for update delivery
+- [LaunchAtLogin-Modern](https://github.com/sindresorhus/LaunchAtLogin-Modern)
+- Basewarp shader by [trinketMage](https://www.shadertoy.com/view/tdG3Rd)
