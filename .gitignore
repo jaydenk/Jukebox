@@ -1,3 +1,5 @@
 
 Jukebox/Secrets.plist
 *.DS_Store
+docs/plans/
+TODO.md

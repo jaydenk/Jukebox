@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://s3.amazonaws.com/dev.jaysce.jukebox/appcast.xml</string>
+	<string>https://jaydenk.github.io/Jukebox/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>eDkdnKWaZWZdQ3sGFiSOhwoaNDZKUEwg1aE6CZNl4Q8=</string>
+	<string>qkaXxpW9HiiJegAxw/e04Qc8qZ5YtkSQIws/MjfZTi4=</string>
 </dict>
 </plist>
