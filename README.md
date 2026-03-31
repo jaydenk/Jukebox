@@ -17,7 +17,8 @@ Jukebox checks for updates automatically via Sparkle.
 ## Usage
 
 <p align="center">
-  <img src="Images/example.png" width="400">
+  <img src="Images/LightModeScreenshot.png" width="400">
+  <img src="Images/DarkModeScreenshot.png" width="400">
 </p>
 
 The app shows the currently playing song in the menu bar with an animated playback indicator. Clicking the menu bar item will present a window displaying details of the current track. Hovering over the album art gives you controls.
