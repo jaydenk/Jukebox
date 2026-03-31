@@ -111,11 +111,12 @@ class ContentViewModel: ObservableObject {
     @objc func playStateOrTrackDidChange(_ sender: NSNotification?) {
         setupMusicApps()
         guard isRunning, sender?.userInfo?["Player State"] as? String != "Stopped" else {
+            self.isPlaying = false
             self.track.title = ""
             self.track.artist = ""
             self.track.albumArt = NSImage()
             self.trackDuration = 0
-            updateMenuBarText()
+            updateMenuBarText(isStopped: true)
             return
         }
         
@@ -194,10 +195,24 @@ class ContentViewModel: ObservableObject {
         
     }
     
-    private func updateMenuBarText() {
+    private func updateMenuBarText(isStopped: Bool = false) {
         DispatchQueue.main.async { [weak self] in
-            guard let title = self?.track.title, let artist = self?.track.artist, let isPlaying = self?.isPlaying else { return }
-            let trackInfo: [String: Any] = ["title": title, "artist": artist, "isPlaying": isPlaying]
+            guard let self, let title = self.track.title as String?,
+                  let artist = self.track.artist as String? else { return }
+            let playbackState: String
+            if isStopped {
+                playbackState = "stopped"
+            } else if self.isPlaying {
+                playbackState = "playing"
+            } else {
+                playbackState = "paused"
+            }
+            let trackInfo: [String: Any] = [
+                "title": title,
+                "artist": artist,
+                "isPlaying": self.isPlaying,
+                "playbackState": playbackState
+            ]
             NotificationCenter.default.post(name: NSNotification.Name(rawValue: "TrackChanged"), object: nil, userInfo: trackInfo)
         }
     }

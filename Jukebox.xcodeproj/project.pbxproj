@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D6A0B1032F2A000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D6A0B1022F2A000000000002 /* Sparkle */; };
 		D6F0E4A62F16F9E300123456 /* NowPlayingCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6F0E4A52F16F9E300123456 /* NowPlayingCompactView.swift */; };
 		E800A8B22732811D00DBDF0E /* MenuMarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = E800A8B12732811D00DBDF0E /* MenuMarqueeText.swift */; };
 		E81CFEC227A12ED60030C448 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81CFEC127A12ED60030C448 /* Helper.swift */; };
@@ -83,6 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6A0B1032F2A000000000003 /* Sparkle in Frameworks */,
 				E8767C66273688FB00E39D17 /* LaunchAtLogin in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -243,6 +245,7 @@
 			);
 			name = Jukebox;
 			packageProductDependencies = (
+				D6A0B1022F2A000000000002 /* Sparkle */,
 				E8767C65273688FB00E39D17 /* LaunchAtLogin */,
 			);
 			productName = Jukebox;
@@ -274,6 +277,7 @@
 			);
 			mainGroup = E8F5721E27166E0D00C5DF9C;
 			packageReferences = (
+				D6A0B1012F2A000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				D62043252F14B24A003E03EE /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */,
 			);
 			productRefGroup = E8F5722827166E0D00C5DF9C /* Products */;
@@ -556,6 +560,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D6A0B1012F2A000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 		D62043252F14B24A003E03EE /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin-Modern";
@@ -567,6 +579,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D6A0B1022F2A000000000002 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D6A0B1012F2A000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		E8767C65273688FB00E39D17 /* LaunchAtLogin */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D62043252F14B24A003E03EE /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */;
