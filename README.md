@@ -35,6 +35,12 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Changelog
 
+### v1.2.0
+
+- **Playback progress indicator** — a progress line below the menu bar icon shows elapsed track time, advancing in real-time during playback and freezing when paused
+- **Disable animations** — new preference to disable bar oscillation and text scrolling for a quieter menu bar
+- **Show playback progress toggle** — choose whether to display the progress line in preferences
+
 ### v1.1.0
 
 - **Floating now playing window** — pin the now playing view as a floating window that stays visible while you work, with optional always-on-top mode and position memory
