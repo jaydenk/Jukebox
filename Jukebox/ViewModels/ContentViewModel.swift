@@ -207,11 +207,17 @@ class ContentViewModel: ObservableObject {
             } else {
                 playbackState = "paused"
             }
+
+            // Query current seeker position for status bar progress indicator
+            self.getCurrentSeekerPosition()
+
             let trackInfo: [String: Any] = [
                 "title": title,
                 "artist": artist,
                 "isPlaying": self.isPlaying,
-                "playbackState": playbackState
+                "playbackState": playbackState,
+                "seekerPosition": self.seekerPosition,
+                "trackDuration": self.trackDuration
             ]
             NotificationCenter.default.post(name: NSNotification.Name(rawValue: "TrackChanged"), object: nil, userInfo: trackInfo)
         }
