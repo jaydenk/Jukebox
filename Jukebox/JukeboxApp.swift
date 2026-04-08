@@ -269,6 +269,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         barAnimator.playbackState = playbackState
 
+        // Update progress indicator
+        let seekerPosition = notification.userInfo?["seekerPosition"] as? Double ?? 0
+        let trackDuration = notification.userInfo?["trackDuration"] as? Double ?? 0
+        barAnimator.setTrackProgress(position: seekerPosition, duration: trackDuration)
+
         // Handle empty track info case
         if titleAndArtist.isEmpty {
             updateStatusBarText("")

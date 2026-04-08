@@ -22,6 +22,8 @@ class StatusBarAnimator {
             guard playbackState != oldValue else { return }
             if playbackState == .playing {
                 barStartTime = CACurrentMediaTime()
+            } else if playbackState == .stopped {
+                trackDuration = 0
             }
             updateTimerState()
             renderFrame()
@@ -87,17 +89,64 @@ class StatusBarAnimator {
     private let barDurations = [0.6, 0.3, 0.5, 0.7]
     private let buttonHeight: CGFloat
 
+    // Progress indicator
+    private var trackDuration: Double = 0
+    private var trackPositionAtCapture: Double = 0
+    private var positionCaptureTime: CFTimeInterval = 0
+    private let progressLineHeight: CGFloat = 2.5
+    private let progressLineGap: CGFloat = 1.5
+    private var showPlaybackProgress: Bool = true
+
     private var isActivelyScrolling: Bool {
         guard needsScrolling else { return false }
         let elapsed = CACurrentMediaTime() - scrollStartTime
         return elapsed >= scrollDelay
     }
 
+    // MARK: - Progress
+
+    private var progressFraction: CGFloat {
+        guard trackDuration > 0,
+              playbackState == .playing || playbackState == .paused else { return 0 }
+
+        let currentPosition: Double
+        if playbackState == .playing {
+            let elapsed = CACurrentMediaTime() - positionCaptureTime
+            currentPosition = trackPositionAtCapture + elapsed
+        } else {
+            currentPosition = trackPositionAtCapture
+        }
+
+        return CGFloat(min(max(currentPosition / trackDuration, 0), 1))
+    }
+
+    func setTrackProgress(position: Double, duration: Double) {
+        trackPositionAtCapture = position
+        trackDuration = duration
+        positionCaptureTime = CACurrentMediaTime()
+    }
+
     // MARK: - Init
+
+    private var defaultsObserver: NSObjectProtocol?
 
     init(button: NSStatusBarButton) {
         self.button = button
         self.buttonHeight = button.bounds.height
+        self.showPlaybackProgress = UserDefaults.standard.object(forKey: "showPlaybackProgress") as? Bool ?? true
+
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            let newValue = UserDefaults.standard.object(forKey: "showPlaybackProgress") as? Bool ?? true
+            if self.showPlaybackProgress != newValue {
+                self.showPlaybackProgress = newValue
+                self.renderFrame()
+            }
+        }
+
         renderFrame()
     }
 
@@ -129,8 +178,21 @@ class StatusBarAnimator {
         let state = playbackState
         let height = buttonHeight
         let imageWidth = totalWidth
-        let midY = height / 2 - 5
         let padding = Constants.StatusBar.statusBarButtonPadding
+
+        // Pre-compute progress values
+        let progress = progressFraction
+        let showProgress = showPlaybackProgress
+            && (state == .playing || state == .paused) && trackDuration > 0
+
+        // Compute midY: the Y where the main icon starts, centring the full
+        // element (icon + optional progress line below) in the button
+        let iconHeight: CGFloat = state == .playing ? 9 : 10  // bars vs pause/stop
+        let progressExtra = showProgress ? progressLineGap + progressLineHeight : 0
+        let totalElementHeight = iconHeight + progressExtra
+        let midY = (height - totalElementHeight) / 2 + progressExtra
+        let capturedProgressLineHeight = progressLineHeight
+        let capturedProgressLineGap = progressLineGap
 
         // Pre-compute bar heights for playing state
         var currentHeights = [CGFloat]()
@@ -189,6 +251,25 @@ class StatusBarAnimator {
                 }
             }
 
+            // Draw progress line below bars
+            if showProgress {
+                let lineY = midY - capturedProgressLineGap - capturedProgressLineHeight
+                let trackWidth = Constants.StatusBar.barAnimationWidth
+
+                // Track (dim background)
+                NSColor.black.withAlphaComponent(0.25).setFill()
+                NSBezierPath(roundedRect: NSRect(x: padding, y: lineY, width: trackWidth, height: capturedProgressLineHeight),
+                             xRadius: capturedProgressLineHeight / 2, yRadius: capturedProgressLineHeight / 2).fill()
+
+                // Fill (elapsed portion)
+                let fillWidth = trackWidth * progress
+                if fillWidth > 0 {
+                    NSColor.black.setFill()
+                    NSBezierPath(roundedRect: NSRect(x: padding, y: lineY, width: fillWidth, height: capturedProgressLineHeight),
+                                 xRadius: capturedProgressLineHeight / 2, yRadius: capturedProgressLineHeight / 2).fill()
+                }
+            }
+
             // Draw text if present
             if hasText {
                 let textClipWidth = imageWidth - capturedTextAreaStart - capturedEndPadding
@@ -231,5 +312,6 @@ class StatusBarAnimator {
     deinit {
         animationTimer?.invalidate()
         scrollDelayTimer?.cancel()
+        if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
     }
 }
