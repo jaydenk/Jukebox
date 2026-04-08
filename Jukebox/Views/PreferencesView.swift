@@ -16,6 +16,7 @@ struct PreferencesView: View {
     @AppStorage("connectedApp") private var connectedApp = ConnectedApps.spotify
     @AppStorage("nowPlayingAlwaysOnTop") private var nowPlayingAlwaysOnTop = false
     @AppStorage("showPlaybackProgress") private var showPlaybackProgress = true
+    @AppStorage("animationsEnabled") private var animationsEnabled = true
     @State private var alertTitle = Text("Title")
     @State private var alertMessage = Text("Message")
     @State private var showingAlert = false
@@ -115,6 +116,7 @@ struct PreferencesView: View {
                     .fontWeight(.semibold)
                 LaunchAtLogin.Toggle()
                 Toggle("Keep floating window on top", isOn: $nowPlayingAlwaysOnTop)
+                Toggle("Enable animations", isOn: $animationsEnabled)
                 Toggle("Show playback progress", isOn: $showPlaybackProgress)
                 HStack {
                     Picker("Connect Jukebox to", selection: $connectedApp) {

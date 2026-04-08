@@ -96,6 +96,7 @@ class StatusBarAnimator {
     private let progressLineHeight: CGFloat = 2.5
     private let progressLineGap: CGFloat = 1.5
     private var showPlaybackProgress: Bool = true
+    private var animationsEnabled: Bool = true
 
     private var isActivelyScrolling: Bool {
         guard needsScrolling else { return false }
@@ -134,17 +135,26 @@ class StatusBarAnimator {
         self.button = button
         self.buttonHeight = button.bounds.height
         self.showPlaybackProgress = UserDefaults.standard.object(forKey: "showPlaybackProgress") as? Bool ?? true
+        self.animationsEnabled = UserDefaults.standard.object(forKey: "animationsEnabled") as? Bool ?? true
 
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            let newValue = UserDefaults.standard.object(forKey: "showPlaybackProgress") as? Bool ?? true
-            if self.showPlaybackProgress != newValue {
-                self.showPlaybackProgress = newValue
-                self.renderFrame()
+            var changed = false
+            let newProgress = UserDefaults.standard.object(forKey: "showPlaybackProgress") as? Bool ?? true
+            if self.showPlaybackProgress != newProgress {
+                self.showPlaybackProgress = newProgress
+                changed = true
             }
+            let newAnimations = UserDefaults.standard.object(forKey: "animationsEnabled") as? Bool ?? true
+            if self.animationsEnabled != newAnimations {
+                self.animationsEnabled = newAnimations
+                self.updateTimerState()
+                changed = true
+            }
+            if changed { self.renderFrame() }
         }
 
         renderFrame()
@@ -153,7 +163,9 @@ class StatusBarAnimator {
     // MARK: - Timer management
 
     private func updateTimerState() {
-        let needsTimer = playbackState == .playing || isActivelyScrolling
+        let needsAnimationTimer = animationsEnabled && (playbackState == .playing || isActivelyScrolling)
+        let needsProgressTimer = showPlaybackProgress && playbackState == .playing && trackDuration > 0
+        let needsTimer = needsAnimationTimer || needsProgressTimer
 
         if needsTimer {
             guard animationTimer == nil else { return }
@@ -195,16 +207,21 @@ class StatusBarAnimator {
         let capturedProgressLineGap = progressLineGap
 
         // Pre-compute bar heights for playing state
+        let capturedAnimationsEnabled = animationsEnabled
         var currentHeights = [CGFloat]()
         if state == .playing {
-            let now = CACurrentMediaTime()
-            let capturedBarStartTime = barStartTime
-            for i in 0..<barHeights.count {
-                let period = barDurations[i] * 2
-                let phase = ((now - capturedBarStartTime + Double(i)) / period)
-                    .truncatingRemainder(dividingBy: 1.0)
-                let t = phase < 0.5 ? phase * 2 : (1 - phase) * 2
-                currentHeights.append(CGFloat(2 + (barHeights[i] - 2) * t))
+            if capturedAnimationsEnabled {
+                let now = CACurrentMediaTime()
+                let capturedBarStartTime = barStartTime
+                for i in 0..<barHeights.count {
+                    let period = barDurations[i] * 2
+                    let phase = ((now - capturedBarStartTime + Double(i)) / period)
+                        .truncatingRemainder(dividingBy: 1.0)
+                    let t = phase < 0.5 ? phase * 2 : (1 - phase) * 2
+                    currentHeights.append(CGFloat(2 + (barHeights[i] - 2) * t))
+                }
+            } else {
+                currentHeights = barHeights.map { CGFloat($0) }
             }
         }
 
@@ -218,7 +235,7 @@ class StatusBarAnimator {
         let capturedNeedsScrolling = needsScrolling
 
         var scrollOffset: CGFloat = 0
-        if capturedNeedsScrolling {
+        if capturedNeedsScrolling && capturedAnimationsEnabled {
             let elapsed = CACurrentMediaTime() - scrollStartTime
             if elapsed >= scrollDelay {
                 let scrollDuration = capturedTextWidth / 30
