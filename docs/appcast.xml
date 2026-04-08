@@ -1,22 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <channel>
-    <title>Jukebox</title>
-    <link>https://github.com/jaydenk/Jukebox</link>
-    <description>Jukebox update feed</description>
-    <language>en</language>
-<item>
-      <title>Version 1.1.0</title>
-      <description>Floating now playing window, improved multi-monitor support, three-state playback indicator, and automatic updates.</description>
-      <pubDate>Tue, 31 Mar 2026 03:56:03 +0000</pubDate>
-      <sparkle:version>1.1.0</sparkle:version>
-      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/jaydenk/Jukebox/releases/download/v1.1.0/Jukebox-1.1.0.zip"
-        sparkle:edSignature="A02P/wUlpeArXaqfksX5iD0gzJWWORX0yS8Wj0/LhpDHALpH52a85Cs+Tez9pbdm1cSTSfCcardzRtA/855mBw=="
-        length="2638788"
-        type="application/octet-stream"/>
-    </item>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Jukebox</title>
+        <item>
+            <title>1.2.0</title>
+            <pubDate>Wed, 08 Apr 2026 14:55:14 +0930</pubDate>
+            <sparkle:version>1.2.0</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://jaydenk.github.io/Jukebox/Jukebox-1.2.0.zip" length="2648283" type="application/octet-stream" sparkle:edSignature="uYvX7a6Ik8CI4LYJ4rryF6GPfEwZq0kCViVc8gvKYqjOhX5wnG+G5TSDWHsPttMy335Fd7W5Bl5PWOIPtrg9Dw=="/>
+        </item>
+    </channel>
 </rss>
