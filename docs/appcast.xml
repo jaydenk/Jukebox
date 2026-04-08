@@ -8,7 +8,7 @@
             <sparkle:version>1.2.0</sparkle:version>
             <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://jaydenk.github.io/Jukebox/Jukebox-1.2.0.zip" length="2648283" type="application/octet-stream" sparkle:edSignature="uYvX7a6Ik8CI4LYJ4rryF6GPfEwZq0kCViVc8gvKYqjOhX5wnG+G5TSDWHsPttMy335Fd7W5Bl5PWOIPtrg9Dw=="/>
+            <enclosure url="https://github.com/jaydenk/Jukebox/releases/download/v1.2.0/Jukebox-1.2.0.zip" length="2648283" type="application/octet-stream" sparkle:edSignature="uYvX7a6Ik8CI4LYJ4rryF6GPfEwZq0kCViVc8gvKYqjOhX5wnG+G5TSDWHsPttMy335Fd7W5Bl5PWOIPtrg9Dw=="/>
         </item>
     </channel>
 </rss>
