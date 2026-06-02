@@ -74,11 +74,6 @@ struct NowPlayingCompactView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .transaction { txn in
-            // While the window is being live-resized, snap layout changes
-            // instead of animating them (prevents the controls "wobble").
-            if contentViewVM.isResizing { txn.animation = nil }
-        }
         .clipShape(RoundedRectangle(cornerRadius: Constants.NowPlaying.cornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onHover { hovering in

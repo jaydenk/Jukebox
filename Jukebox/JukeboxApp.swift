@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Sparkle
+import QuartzCore
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
 
@@ -32,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var popover: NSPopover!
     private var nowPlayingWindow: NowPlayingWindow!
     private var popoverHostView: NSHostingView<ContentView>!
-    private var floatingHostView: NSHostingView<NowPlayingCompactView>!
+    private var floatingHostView: SnapHostingView<NowPlayingCompactView>!
     private var preferencesWindow: PreferencesWindow!
     private var onboardingWindow: OnboardingWindow!
     private var pauseTimer: Timer?
@@ -94,7 +95,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         popover.contentViewController?.view = popoverHostView
 
         // Initialize Floating Window Content
-        floatingHostView = NSHostingView(rootView: NowPlayingCompactView(contentViewVM: contentViewVM))
+        floatingHostView = SnapHostingView(rootView: NowPlayingCompactView(contentViewVM: contentViewVM))
+        // Single sizing authority: let the autoresized contentView frame drive
+        // size (no intrinsic/min/max Auto Layout constraints from the host), so
+        // the centred overlay lays out against an already-final frame each tick.
+        floatingHostView.sizingOptions = []
+        floatingHostView.translatesAutoresizingMaskIntoConstraints = true
+        floatingHostView.autoresizingMask = [.width, .height]
         floatingHostView.frame = NSRect(x: 0, y: 0, width: floatingSize.width, height: floatingSize.height)
 
         nowPlayingWindow = NowPlayingWindow(
@@ -264,9 +271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func windowWillStartLiveResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
-        // Disable SwiftUI animations and quiet the 0.1s position updates during
-        // the drag so the overlay snaps with the window instead of tweening.
-        contentViewVM.isResizing = true
+        // Quiet the 0.1s position updates during the drag (less re-render churn).
         contentViewVM.pauseTimer()
     }
 
@@ -275,7 +280,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         storeNowPlayingWindowOrigin(window.frame.origin)
         nowPlayingWindowWidth = window.frame.size.width
         nowPlayingWindowHeight = window.frame.size.height
-        contentViewVM.isResizing = false
         contentViewVM.startTimer()
     }
 
@@ -426,6 +430,23 @@ final class NowPlayingWindow: NSPanel {
         let maxS = Constants.NowPlaying.maxWindowSize
         contentMinSize = NSSize(width: minS, height: minS)
         contentMaxSize = NSSize(width: maxS, height: maxS)
+    }
+}
+
+/// NSHostingView that suppresses implicit Core Animation actions on its layer
+/// tree during a live window resize, so the hosted SwiftUI content snaps to the
+/// new frame each tick instead of tweening (which SwiftUI's Transaction cannot
+/// reach because the tween is at the CALayer level).
+final class SnapHostingView<Content: View>: NSHostingView<Content> {
+    override func layout() {
+        if inLiveResize {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            super.layout()
+            CATransaction.commit()
+        } else {
+            super.layout()
+        }
     }
 }
 
