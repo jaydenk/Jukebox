@@ -40,6 +40,7 @@ class ContentViewModel: ObservableObject {
     @Published var timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     @Published var trackDuration: Double = 0
     @Published var seekerPosition: Double = 0
+    @Published var isScrubbing = false
 
     // Menu bar progress re-anchor poll (runs independently of the popover)
     private var menuBarProgressTimer: Timer?
@@ -286,7 +287,7 @@ class ContentViewModel: ObservableObject {
     // MARK: - Seeker
     
     func getCurrentSeekerPosition() {
-        guard isRunning else { return }
+        guard isRunning, !isScrubbing else { return }
         self.seekerPosition = connectedApp == .spotify
         ? Double(spotifyApp?.playerPosition ?? 0)
         : Double(appleMusicApp?.playerPosition ?? 0)
@@ -351,8 +352,14 @@ class ContentViewModel: ObservableObject {
             name: NSNotification.Name(rawValue: "ProgressUpdate"), object: nil, userInfo: info)
     }
     
-    func seekTrack() {
-        spotifyApp?.setPlayerPosition?(seekerPosition)
+    func seek(to seconds: Double) {
+        switch connectedApp {
+        case .spotify:
+            spotifyApp?.setPlayerPosition?(seconds)
+        case .appleMusic:
+            appleMusicApp?.setPlayerPosition?(seconds)
+        }
+        seekerPosition = seconds
     }
     
     func startTimer() {
