@@ -384,7 +384,7 @@ final class NowPlayingWindow: NSPanel {
     init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -396,6 +396,13 @@ final class NowPlayingWindow: NSPanel {
         isOpaque = false
         hasShadow = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        // Resize: locked square, bounded so the album art never upscales noticeably
+        aspectRatio = NSSize(width: 1, height: 1)
+        let minS = Constants.NowPlaying.minWindowSize
+        let maxS = Constants.NowPlaying.maxWindowSize
+        contentMinSize = NSSize(width: minS, height: minS)
+        contentMaxSize = NSSize(width: maxS, height: maxS)
     }
 }
 
