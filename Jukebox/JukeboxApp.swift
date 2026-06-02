@@ -262,11 +262,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         storeNowPlayingWindowOrigin(window.frame.origin)
     }
 
+    func windowWillStartLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        // Quiet the 0.1s position updates during the drag so re-renders don't
+        // fight the live resize and make the overlay stutter.
+        contentViewVM.pauseTimer()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        // Force the hosted SwiftUI to lay out synchronously with each resize
+        // step, so the centred controls track the window instead of lagging.
+        window.contentView?.layoutSubtreeIfNeeded()
+    }
+
     func windowDidEndLiveResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
         storeNowPlayingWindowOrigin(window.frame.origin)
         nowPlayingWindowWidth = window.frame.size.width
         nowPlayingWindowHeight = window.frame.size.height
+        contentViewVM.startTimer()
     }
 
     private func updateStatusBarText(_ text: String) {
