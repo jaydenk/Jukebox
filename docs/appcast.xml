@@ -3,12 +3,12 @@
     <channel>
         <title>Jukebox</title>
         <item>
-            <title>1.2.0</title>
-            <pubDate>Wed, 08 Apr 2026 14:55:14 +0930</pubDate>
-            <sparkle:version>1.2.0</sparkle:version>
-            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <title>1.2.1</title>
+            <pubDate>Tue, 02 Jun 2026 17:10:19 +0930</pubDate>
+            <sparkle:version>1.2.1</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/jaydenk/Jukebox/releases/download/v1.2.0/Jukebox-1.2.0.zip" length="2648283" type="application/octet-stream" sparkle:edSignature="uYvX7a6Ik8CI4LYJ4rryF6GPfEwZq0kCViVc8gvKYqjOhX5wnG+G5TSDWHsPttMy335Fd7W5Bl5PWOIPtrg9Dw=="/>
+            <enclosure url="https://github.com/jaydenk/Jukebox/releases/download/v1.2.1/Jukebox-1.2.1.zip" length="2651595" type="application/octet-stream" sparkle:edSignature="rmaGQxN/CT7WY08oDPfaV3A/0FoXINLOhN1kVVm1BgsEw5VGVrI93KrBvel/gDi/q9cGR54brt9b2WXC3U1KBQ=="/>
         </item>
     </channel>
 </rss>
