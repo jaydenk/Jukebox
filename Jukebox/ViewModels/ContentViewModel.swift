@@ -40,7 +40,11 @@ class ContentViewModel: ObservableObject {
     @Published var timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     @Published var trackDuration: Double = 0
     @Published var seekerPosition: Double = 0
-    
+
+    // Menu bar progress re-anchor poll (runs independently of the popover)
+    private var menuBarProgressTimer: Timer?
+    private let menuBarProgressInterval: TimeInterval = 1.0
+
     private var observer: NSKeyValueObservation?
     
     init() {
@@ -52,6 +56,7 @@ class ContentViewModel: ObservableObject {
     
     deinit {
         observer?.invalidate()
+        stopMenuBarProgressUpdates()
     }
     
     // MARK: - Setup
@@ -116,13 +121,15 @@ class ContentViewModel: ObservableObject {
             self.track.artist = ""
             self.track.albumArt = NSImage()
             self.trackDuration = 0
+            stopMenuBarProgressUpdates()
             updateMenuBarText(isStopped: true)
             return
         }
-        
+
         print("The play state or the currently playing track changed")
         getPlayState()
         getTrackInformation()
+        startMenuBarProgressUpdates()
     }
     
     // MARK: - Media & Playback
@@ -154,10 +161,13 @@ class ContentViewModel: ObservableObject {
                     DispatchQueue.main.async {
                         self?.track.albumArt = NSImage(data: data) ?? NSImage()
                     }
-                    
+
                 }.resume()
+            } else {
+                // No artwork URL for this track — clear stale art from the previous track.
+                self.track.albumArt = NSImage()
             }
-            
+
             // Seeker
             self.trackDuration = Double(spotifyApp?.currentTrack?.duration ?? 0) / 1000
             
@@ -168,22 +178,33 @@ class ContentViewModel: ObservableObject {
             self.track.artist = appleMusicApp?.currentTrack?.artist ?? "Unknown Artist"
             self.track.album = appleMusicApp?.currentTrack?.album ?? "Unknown Album"
             self.isLoved = appleMusicApp?.currentTrack?.loved ?? false
-            // Might have to change this later...
-            var count = 0
-            var waitForData: (() -> Void)!
-            waitForData = {
-                let art = self.appleMusicApp?.currentTrack?.artworks?()[0] as! MusicArtwork
-                if art.data != nil && !art.data!.isEmpty() {
-                    self.track.albumArt = art.data!
-                } else {
-                    if count > 20 { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        waitForData()
+
+            // Album art. A track with no artwork must clear any art left over
+            // from the previously playing track. Apple Music delivers artwork
+            // data asynchronously, so when artwork exists we poll briefly for the
+            // data to arrive — and still clear it if it never materialises.
+            if (self.appleMusicApp?.currentTrack?.artworks?().count ?? 0) == 0 {
+                self.track.albumArt = NSImage()
+            } else {
+                var count = 0
+                var waitForData: (() -> Void)!
+                waitForData = {
+                    let art = self.appleMusicApp?.currentTrack?.artworks?()[0] as! MusicArtwork
+                    if art.data != nil && !art.data!.isEmpty() {
+                        self.track.albumArt = art.data!
+                    } else {
+                        if count > 20 {
+                            self.track.albumArt = NSImage()
+                            return
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            waitForData()
+                        }
                     }
+                    count += 1
                 }
-                count += 1
+                waitForData()
             }
-            waitForData()
             
             // Seeker
             self.trackDuration = Double(appleMusicApp?.currentTrack?.duration ?? 0)
@@ -269,6 +290,65 @@ class ContentViewModel: ObservableObject {
         self.seekerPosition = connectedApp == .spotify
         ? Double(spotifyApp?.playerPosition ?? 0)
         : Double(appleMusicApp?.playerPosition ?? 0)
+    }
+
+    // MARK: - Menu Bar Progress Poll
+
+    // The menu bar progress line self-advances from a single position snapshot,
+    // so it only stays accurate while it is periodically re-anchored to the real
+    // player position. Notifications alone are insufficient: Apple Music does NOT
+    // post a `playerInfo` notification when the playhead is moved on a local
+    // (file) track, so a seek would otherwise go unnoticed until the next track
+    // change. This low-frequency poll reconciles position and play state for both
+    // apps, independently of whether the popover is open.
+    private func startMenuBarProgressUpdates() {
+        guard menuBarProgressTimer == nil else { return }
+        let timer = Timer(timeInterval: menuBarProgressInterval, repeats: true) { [weak self] _ in
+            self?.pollMenuBarProgress()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        menuBarProgressTimer = timer
+    }
+
+    private func stopMenuBarProgressUpdates() {
+        menuBarProgressTimer?.invalidate()
+        menuBarProgressTimer = nil
+    }
+
+    private func pollMenuBarProgress() {
+        guard isRunning else {
+            stopMenuBarProgressUpdates()
+            return
+        }
+
+        getCurrentSeekerPosition()
+
+        let stateString: String
+        switch connectedApp {
+        case .spotify:
+            switch spotifyApp?.playerState {
+            case .playing: stateString = "playing"
+            case .paused: stateString = "paused"
+            default: stateString = "stopped"
+            }
+        case .appleMusic:
+            switch appleMusicApp?.playerState {
+            case .playing: stateString = "playing"
+            case .paused: stateString = "paused"
+            default: stateString = "stopped"
+            }
+        }
+
+        let playing = (stateString == "playing")
+        if isPlaying != playing { isPlaying = playing }
+
+        let info: [String: Any] = [
+            "playbackState": stateString,
+            "seekerPosition": seekerPosition,
+            "trackDuration": trackDuration
+        ]
+        NotificationCenter.default.post(
+            name: NSNotification.Name(rawValue: "ProgressUpdate"), object: nil, userInfo: info)
     }
     
     func seekTrack() {

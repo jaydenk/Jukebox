@@ -20,7 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @AppStorage("nowPlayingWindowHasPosition") private var nowPlayingWindowHasPosition = false
     @AppStorage("nowPlayingWindowX") private var nowPlayingWindowX = 0.0
     @AppStorage("nowPlayingWindowY") private var nowPlayingWindowY = 0.0
-    @StateObject var contentViewVM = ContentViewModel()
+    // Owned (not @StateObject): AppDelegate is not a SwiftUI View, so @StateObject's
+    // autoclosure was being evaluated twice here, creating a second ContentViewModel
+    // (with duplicate distributed observers and timers). A plain stored property gives
+    // exactly one instance, which the views observe via @ObservedObject.
+    let contentViewVM = ContentViewModel()
     private var statusBarItem: NSStatusItem!
     private var statusBarMenu: NSMenu!
     private var popover: NSPopover!
@@ -47,6 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self,
             selector: #selector(updateStatusBarItemTitle),
             name: NSNotification.Name("TrackChanged"),
+            object: nil)
+
+        // Add observer for lightweight progress re-anchoring (position/state only)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateProgress),
+            name: NSNotification.Name("ProgressUpdate"),
             object: nil)
 
         // Onboarding
@@ -298,6 +309,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 self.updateStatusBarText("")
             }
         }
+    }
+
+    // Lightweight progress re-anchor driven by the ContentViewModel poll. Updates
+    // only the playback state and progress snapshot — it deliberately does NOT
+    // call setText(), so the marquee scroll position and album art are left
+    // untouched while the menu bar progress line is kept in sync with seeks.
+    @objc func updateProgress(_ notification: NSNotification) {
+        guard let barAnimator else { return }
+
+        let playbackStateString = notification.userInfo?["playbackState"] as? String ?? "stopped"
+        let playbackState: PlaybackState
+        switch playbackStateString {
+        case "playing": playbackState = .playing
+        case "paused": playbackState = .paused
+        default: playbackState = .stopped
+        }
+        barAnimator.playbackState = playbackState
+
+        let seekerPosition = notification.userInfo?["seekerPosition"] as? Double ?? 0
+        let trackDuration = notification.userInfo?["trackDuration"] as? Double ?? 0
+        barAnimator.setTrackProgress(position: seekerPosition, duration: trackDuration)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

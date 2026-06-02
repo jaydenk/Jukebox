@@ -125,6 +125,11 @@ class StatusBarAnimator {
         trackPositionAtCapture = position
         trackDuration = duration
         positionCaptureTime = CACurrentMediaTime()
+        // Re-anchoring must (re)start the progress timer if needed and redraw
+        // immediately — otherwise a fresh snapshot would not be reflected when
+        // the bar animation timer is not already running (e.g. animations off).
+        updateTimerState()
+        renderFrame()
     }
 
     // MARK: - Init

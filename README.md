@@ -35,6 +35,12 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Changelog
 
+### v1.2.1
+
+- **Apple Music seek sync** — the menu bar progress line now follows seeks and scrubs on Apple Music tracks, including local files. Previously it would freeze at the old position until the next track, because Apple Music does not broadcast a notification when a local track is seeked
+- **Album art for art-less tracks** — a track with no artwork no longer keeps showing the previously playing track's cover
+- **Under the hood** — fixed the now playing view model being initialised twice, which was doubling background queries to the music app
+
 ### v1.2.0
 
 - **Playback progress indicator** — a progress line below the menu bar icon shows elapsed track time, advancing in real-time during playback and freezing when paused
