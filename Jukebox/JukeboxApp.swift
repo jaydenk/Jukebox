@@ -271,7 +271,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func windowWillStartLiveResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
-        // Quiet the 0.1s position updates during the drag (less re-render churn).
+        // Hide the transient hover overlay (and quiet position updates) during the
+        // drag so the only visible content is the edge-pinned album art, which
+        // tracks the resize cleanly. The overlay can't wobble if it isn't shown.
+        contentViewVM.isResizing = true
         contentViewVM.pauseTimer()
     }
 
@@ -280,6 +283,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         storeNowPlayingWindowOrigin(window.frame.origin)
         nowPlayingWindowWidth = window.frame.size.width
         nowPlayingWindowHeight = window.frame.size.height
+        contentViewVM.isResizing = false
         contentViewVM.startTimer()
     }
 

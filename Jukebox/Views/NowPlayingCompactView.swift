@@ -70,7 +70,7 @@ struct NowPlayingCompactView: View {
                     }
                 }
                 .padding(Constants.NowPlaying.controlPadding)
-                .opacity(isShowingPlaybackControls ? 1 : 0)
+                .opacity((isShowingPlaybackControls && !contentViewVM.isResizing) ? 1 : 0)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -41,6 +41,7 @@ class ContentViewModel: ObservableObject {
     @Published var trackDuration: Double = 0
     @Published var seekerPosition: Double = 0
     @Published var isScrubbing = false
+    @Published var isResizing = false
 
     // Menu bar progress re-anchor poll (runs independently of the popover)
     private var menuBarProgressTimer: Timer?
