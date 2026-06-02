@@ -20,6 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @AppStorage("nowPlayingWindowHasPosition") private var nowPlayingWindowHasPosition = false
     @AppStorage("nowPlayingWindowX") private var nowPlayingWindowX = 0.0
     @AppStorage("nowPlayingWindowY") private var nowPlayingWindowY = 0.0
+    @AppStorage("nowPlayingWindowWidth") private var nowPlayingWindowWidth = 240.0
+    @AppStorage("nowPlayingWindowHeight") private var nowPlayingWindowHeight = 240.0
     // Owned (not @StateObject): AppDelegate is not a SwiftUI View, so @StateObject's
     // autoclosure was being evaluated twice here, creating a second ContentViewModel
     // (with duplicate distributed observers and timers). A plain stored property gives
@@ -78,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func setupContentView() {
         let popoverSize = NSSize(width: 272, height: 350)
-        let floatingSize = Constants.NowPlaying.windowSize
+        let floatingSize = NSSize(width: nowPlayingWindowWidth, height: nowPlayingWindowHeight)
 
         // Initialize Popover Content
         popoverHostView = NSHostingView(rootView: ContentView(contentViewVM: contentViewVM))
@@ -172,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if nowPlayingPinned {
             if nowPlayingWindow.isVisible {
                 nowPlayingWindow.orderOut(nil)
+                contentViewVM.pauseTimer()
             } else {
                 showNowPlayingWindow(relativeTo: statusBarItemButton)
             }
@@ -197,18 +200,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         } else {
             nowPlayingWindow.orderOut(nil)
+            contentViewVM.pauseTimer()
         }
+    }
+
+    @objc func toggleAlwaysOnTop(_ sender: Any?) {
+        nowPlayingAlwaysOnTop.toggle()   // didSet calls applyNowPlayingWindowLevel()
     }
 
     private func showNowPlayingWindow(relativeTo button: NSStatusBarButton) {
         applyNowPlayingWindowLevel()
+        let size = NSSize(width: nowPlayingWindowWidth, height: nowPlayingWindowHeight)
         if let savedOrigin = savedNowPlayingWindowOrigin() {
-            nowPlayingWindow.setFrameOrigin(savedOrigin)
+            nowPlayingWindow.setFrame(NSRect(origin: savedOrigin, size: size), display: true)
         } else {
+            nowPlayingWindow.setContentSize(size)
             positionNowPlayingWindow(relativeTo: button)
         }
         nowPlayingWindow.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
+        contentViewVM.startTimer()
     }
 
     private func positionNowPlayingWindow(relativeTo button: NSStatusBarButton) {
@@ -254,6 +265,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func windowDidEndLiveResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
         storeNowPlayingWindowOrigin(window.frame.origin)
+        nowPlayingWindowWidth = window.frame.size.width
+        nowPlayingWindowHeight = window.frame.size.height
     }
 
     private func updateStatusBarText(_ text: String) {
