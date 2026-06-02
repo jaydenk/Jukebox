@@ -12,7 +12,7 @@ struct NowPlayingCompactView: View {
 
     // User Defaults
     @AppStorage("connectedApp") private var connectedApp: ConnectedApps = .spotify
-    @AppStorage("nowPlayingPinned") private var nowPlayingPinned = false
+    @AppStorage("nowPlayingAlwaysOnTop") private var nowPlayingAlwaysOnTop = false
 
     // View Model
     @ObservedObject var contentViewVM: ContentViewModel
@@ -24,15 +24,19 @@ struct NowPlayingCompactView: View {
     let primaryOpacity = 0.8
     let secondaryOpacity = 0.4
 
-    var body: some View {
-        let size = Constants.NowPlaying.windowSize
+    private var seekFraction: Double {
+        let d = contentViewVM.trackDuration
+        guard d > 0 else { return 0 }
+        return min(max(contentViewVM.seekerPosition / d, 0), 1)
+    }
 
+    var body: some View {
         ZStack {
             if contentViewVM.isRunning {
                 Image(nsImage: contentViewVM.track.albumArt)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: size.width, height: size.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
             } else {
                 VisualEffectView(material: .popover, blendingMode: .withinWindow)
@@ -44,29 +48,55 @@ struct NowPlayingCompactView: View {
             }
 
             if contentViewVM.isRunning {
-                VStack {
+                VStack(spacing: 8) {
                     Spacer()
-                    HStack {
-                        Spacer()
-                        pinButton
+                    if contentViewVM.trackDuration > 0 {
+                        ScrubBar(
+                            fraction: seekFraction,
+                            onScrub: { f in
+                                contentViewVM.isScrubbing = true
+                                contentViewVM.seekerPosition = f * contentViewVM.trackDuration
+                            },
+                            onCommit: { f in
+                                contentViewVM.seek(to: f * contentViewVM.trackDuration)
+                                contentViewVM.isScrubbing = false
+                            }
+                        )
+                        .padding(.horizontal, 4)
                     }
-                }
-                .padding(Constants.NowPlaying.controlPadding)
-                .opacity(isShowingPlaybackControls ? 1 : 0)
-
-                VStack {
-                    Spacer()
                     playbackControls
                 }
                 .padding(Constants.NowPlaying.controlPadding)
                 .opacity(isShowingPlaybackControls ? 1 : 0)
             }
         }
-        .frame(width: size.width, height: size.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: Constants.NowPlaying.cornerRadius, style: .continuous))
+        .contentShape(Rectangle())
         .onHover { hovering in
             withAnimation(.linear(duration: 0.1)) {
                 isShowingPlaybackControls = hovering
+            }
+        }
+        .onReceive(contentViewVM.timer) { _ in
+            contentViewVM.getCurrentSeekerPosition()
+        }
+        .contextMenu {
+            Button("Unpin") {
+                NSApplication.shared.sendAction(#selector(AppDelegate.togglePinnedMode), to: nil, from: nil)
+            }
+            Toggle("Keep on Top", isOn: Binding(
+                get: { nowPlayingAlwaysOnTop },
+                set: { _ in
+                    NSApplication.shared.sendAction(#selector(AppDelegate.toggleAlwaysOnTop), to: nil, from: nil)
+                }
+            ))
+            Divider()
+            Button("Preferences…") {
+                NSApplication.shared.sendAction(#selector(AppDelegate.showPreferences), to: nil, from: nil)
+            }
+            Button("Quit Jukebox") {
+                NSApplication.shared.terminate(nil)
             }
         }
     }
@@ -115,20 +145,36 @@ struct NowPlayingCompactView: View {
         .background(VisualEffectView(material: .popover, blendingMode: .withinWindow))
         .cornerRadius(100)
     }
+}
 
-    private var pinButton: some View {
-        Button {
-            NSApplication.shared.sendAction(#selector(AppDelegate.togglePinnedMode), to: nil, from: nil)
-        } label: {
-            Image(systemName: nowPlayingPinned ? "pin.square.fill" : "pin.square")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.primary.opacity(primaryOpacity))
+/// Thin click + drag seek bar overlaid on the album art.
+struct ScrubBar: View {
+    let fraction: Double             // 0...1 current playback fraction
+    let onScrub: (Double) -> Void    // continuous drag updates
+    let onCommit: (Double) -> Void   // final value on release
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.25))
+                Capsule()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: min(max(fraction, 0), 1) * width)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard width > 0 else { return }
+                        onScrub(min(max(value.location.x / width, 0), 1))
+                    }
+                    .onEnded { value in
+                        guard width > 0 else { return }
+                        onCommit(min(max(value.location.x / width, 0), 1))
+                    }
+            )
         }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(VisualEffectView(material: .popover, blendingMode: .withinWindow))
-        .cornerRadius(100)
+        .frame(height: 4)
     }
-
 }
