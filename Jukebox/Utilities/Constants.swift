@@ -24,7 +24,9 @@ enum Constants {
     }
 
     enum NowPlaying {
-        static let windowSize = CGSize(width: 240, height: 240)
+        static let windowSize = CGSize(width: 240, height: 240)   // default
+        static let minWindowSize: CGFloat = 200
+        static let maxWindowSize: CGFloat = 360
         static let cornerRadius: CGFloat = 12
         static let controlPadding: CGFloat = 10
     }
