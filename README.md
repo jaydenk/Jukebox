@@ -35,6 +35,12 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Changelog
 
+### v1.3.0
+
+- **Resizable floating window** — drag any edge to resize the pinned now playing window; it stays square and remembers its size as well as its position
+- **Right-click menu** — right-click the floating window to unpin, toggle "keep on top", open preferences, or quit (the hover pin button has been removed)
+- **Seek from the floating window** — hover to reveal a progress bar you can click or drag to scrub, now working for both Spotify and Apple Music
+
 ### v1.2.1
 
 - **Apple Music seek sync** — the menu bar progress line now follows seeks and scrubs on Apple Music tracks, including local files. Previously it would freeze at the old position until the next track, because Apple Music does not broadcast a notification when a local track is seeked
