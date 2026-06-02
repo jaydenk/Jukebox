@@ -77,7 +77,10 @@ struct NowPlayingCompactView: View {
         .clipShape(RoundedRectangle(cornerRadius: Constants.NowPlaying.cornerRadius, style: .continuous))
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.linear(duration: 0.1)) {
+            // Quick fade-in on hover, graceful fade-out when the cursor leaves.
+            // Resize hiding is driven by isResizing (set without animation by the
+            // window delegate), so it stays instant and is excluded from this fade.
+            withAnimation(.easeOut(duration: hovering ? 0.12 : 0.35)) {
                 isShowingPlaybackControls = hovering
             }
         }
