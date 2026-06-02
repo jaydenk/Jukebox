@@ -80,7 +80,7 @@ struct NowPlayingCompactView: View {
             // Quick fade-in on hover, graceful fade-out when the cursor leaves.
             // Resize hiding is driven by isResizing (set without animation by the
             // window delegate), so it stays instant and is excluded from this fade.
-            withAnimation(.easeOut(duration: hovering ? 0.12 : 0.35)) {
+            withAnimation(.easeOut(duration: hovering ? 0.12 : 1.5)) {
                 isShowingPlaybackControls = hovering
             }
         }
