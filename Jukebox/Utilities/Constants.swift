@@ -42,5 +42,12 @@ enum Constants {
         static let bundleID = "com.apple.Music"
         static let notification = "\(bundleID).playerInfo"
     }
-    
+
+    enum Logging {
+        static let subsystem = "com.jaydenkerr.Jukebox"
+        static let enabledKey = "debugLoggingEnabled"
+        static let logFileName = "Jukebox.log"
+        static let maxLogBytes = 5 * 1024 * 1024  // 5 MB; rolls once to Jukebox.log.1
+    }
+
 }
