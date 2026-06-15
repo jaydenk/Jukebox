@@ -296,6 +296,37 @@ class ContentViewModel: ObservableObject {
         }
     }
 
+    /// Snapshot of current app/track state for the exported diagnostics header.
+    func currentDiagnostics() -> DiagnosticsReport {
+        let bundleID = connectedApp == .spotify ? Constants.Spotify.bundleID : Constants.AppleMusic.bundleID
+        let permission = Helper.promptUserForConsent(for: bundleID)
+        let trackSource: String
+        switch connectedApp {
+        case .appleMusic:
+            trackSource = makeAppleMusicTrackDiagnostics()?.description ?? "no track"
+        case .spotify:
+            trackSource = "source=streamed (Spotify)"
+        }
+        return DiagnosticsReport(
+            appVersion: Constants.AppInfo.appVersion ?? "?",
+            osVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+            connectedApp: name,
+            isRunning: isRunning,
+            permissionStatus: Self.permissionName(permission),
+            debugLoggingEnabled: UserDefaults.standard.bool(forKey: Constants.Logging.enabledKey),
+            currentTrackSource: trackSource,
+            exportedAt: Date())
+    }
+
+    private static func permissionName(_ status: Helper.PermissionStatus) -> String {
+        switch status {
+        case .closed: return "app not open"
+        case .granted: return "granted"
+        case .notPrompted: return "not prompted"
+        case .denied: return "denied"
+        }
+    }
+
     private func updateMenuBarText(isStopped: Bool = false) {
         DispatchQueue.main.async { [weak self] in
             guard let self, let title = self.track.title as String?,
