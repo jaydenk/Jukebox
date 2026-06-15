@@ -51,6 +51,22 @@ struct VerifyLogging {
                "after rotation, current file holds only the newest line")
         try? FileManager.default.removeItem(at: tmpDir)
 
+        // TrackSourceType classifier (pure)
+        expect(TrackDiagnostics.classify(hasAddress: true, hasFileLocation: false, cloudStatus: "unknown") == .internetRadioStream,
+               "an address means internet radio stream")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: true, cloudStatus: "unknown") == .localFile,
+               "a file location means local file")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "subscription") == .streamed,
+               "subscription with no location means streamed")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "purchased") == .streamed,
+               "purchased cloud track with no location means streamed")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "unknown") == .unknown,
+               "no signals means unknown")
+        let diag = TrackDiagnostics(sourceType: .streamed, cloudStatus: "subscription", kind: "Apple Music AAC audio file",
+                                    mediaKind: "song", hasLocation: false, sizeBytes: 0, address: nil)
+        expect(diag.description.contains("source=streamed"), "description must include derived source")
+        expect(diag.description.contains("cloudStatus=subscription"), "description must include cloud status")
+
         print("verify-logging: all checks passed")
     }
 }

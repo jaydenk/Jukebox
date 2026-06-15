@@ -1,1 +1,38 @@
 import Foundation
+
+/// Whether the currently-playing track is a local file or streamed.
+enum TrackSourceType: String {
+    case localFile
+    case streamed
+    case internetRadioStream
+    case unknown
+}
+
+/// Raw signals captured from a Music track plus the derived source type.
+/// The classifier is pure (primitive inputs) so it is verifiable in isolation.
+struct TrackDiagnostics: CustomStringConvertible {
+    let sourceType: TrackSourceType
+    let cloudStatus: String
+    let kind: String
+    let mediaKind: String
+    let hasLocation: Bool
+    let sizeBytes: Int64
+    let address: String?
+
+    /// Cloud statuses that indicate an Apple Music cloud/catalogue track.
+    private static let cloudStatuses: Set<String> = ["subscription", "purchased", "matched", "uploaded"]
+
+    static func classify(hasAddress: Bool, hasFileLocation: Bool, cloudStatus: String) -> TrackSourceType {
+        if hasAddress { return .internetRadioStream }
+        if hasFileLocation { return .localFile }
+        if cloudStatuses.contains(cloudStatus) { return .streamed }
+        return .unknown
+    }
+
+    /// Single-line, log-friendly summary.
+    var description: String {
+        let addr = address.map { ", address=\($0)" } ?? ""
+        return "source=\(sourceType.rawValue) cloudStatus=\(cloudStatus) kind=\"\(kind)\" "
+            + "mediaKind=\(mediaKind) hasLocation=\(hasLocation) size=\(sizeBytes)\(addr)"
+    }
+}
