@@ -67,6 +67,19 @@ struct VerifyLogging {
         expect(diag.description.contains("source=streamed"), "description must include derived source")
         expect(diag.description.contains("cloudStatus=subscription"), "description must include cloud status")
 
+        // DiagnosticsReport header (pure)
+        let report = DiagnosticsReport(
+            appVersion: "1.2.1", osVersion: "Version 26.5", connectedApp: "Apple Music",
+            isRunning: true, permissionStatus: "granted", debugLoggingEnabled: true,
+            currentTrackSource: "source=streamed cloudStatus=subscription",
+            exportedAt: Date(timeIntervalSince1970: 1_750_000_000))
+        let header = report.header()
+        expect(header.contains("1.2.1"), "header must include app version")
+        expect(header.contains("Version 26.5"), "header must include macOS version")
+        expect(header.contains("Apple Music"), "header must include connected app")
+        expect(header.contains("granted"), "header must include permission status")
+        expect(header.contains("source=streamed"), "header must include current track source")
+
         print("verify-logging: all checks passed")
     }
 }
