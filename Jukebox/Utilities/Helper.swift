@@ -19,16 +19,16 @@ class Helper {
         
         switch status {
         case -600:
-            print("The application with BundleID: \(appBundleID) is not open.")
+            Log.permissions.notice("Automation target not open: \(appBundleID)")
             return .closed
         case -0:
-            print("Permissions granted for the application with BundleID: \(appBundleID).")
+            Log.permissions.info("Automation permission granted: \(appBundleID)")
             return .granted
         case -1744:
-            print("User consent required but not prompted for the application with BundleID: \(appBundleID).")
+            Log.permissions.notice("Automation consent required but not prompted: \(appBundleID)")
             return .notPrompted
         default:
-            print("The user has declined permission for the application with BundleID: \(appBundleID).")
+            Log.permissions.notice("Automation permission denied: \(appBundleID)")
             return .denied
         }
     }

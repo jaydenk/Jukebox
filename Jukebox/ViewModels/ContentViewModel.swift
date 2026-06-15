@@ -64,7 +64,7 @@ class ContentViewModel: ObservableObject {
     // MARK: - Setup
     
     private func setupMusicApps() {
-        print("Setting up music apps")
+        Log.general.info("Setting up music apps for \(name)")
         switch connectedApp {
         case .spotify:
             guard spotifyApp == nil else { return }
@@ -128,7 +128,7 @@ class ContentViewModel: ObservableObject {
             return
         }
 
-        print("The play state or the currently playing track changed")
+        Log.playback.debug("Play state or current track changed")
         getPlayState()
         getTrackInformation()
         startMenuBarProgressUpdates()
@@ -144,7 +144,7 @@ class ContentViewModel: ObservableObject {
     
     func getTrackInformation() {
         
-        print("Getting track information...")
+        Log.playback.debug("Getting track information for \(name)")
         
         switch connectedApp {
         case .spotify:
@@ -281,7 +281,7 @@ class ContentViewModel: ObservableObject {
                 self.isLoved = !isLovedTrack
             }
         case .spotify:
-            print("Not supported")
+            Log.playback.notice("Love is not supported for Spotify")
         }
     }
     
