@@ -11,12 +11,14 @@ import LaunchAtLogin
 struct PreferencesView: View {
     
     private weak var parentWindow: PreferencesWindow!
-    
+    @ObservedObject private var contentViewVM: ContentViewModel
+
     @AppStorage("visualizerStyle") private var visualizerStyle = VisualizerStyle.albumArt
     @AppStorage("connectedApp") private var connectedApp = ConnectedApps.spotify
     @AppStorage("nowPlayingAlwaysOnTop") private var nowPlayingAlwaysOnTop = false
     @AppStorage("showPlaybackProgress") private var showPlaybackProgress = true
     @AppStorage("animationsEnabled") private var animationsEnabled = true
+    @AppStorage("debugLoggingEnabled") private var debugLoggingEnabled = false
     @State private var alertTitle = Text("Title")
     @State private var alertMessage = Text("Message")
     @State private var showingAlert = false
@@ -25,8 +27,9 @@ struct PreferencesView: View {
         Text(connectedApp.localizedName)
     }
     
-    init(parentWindow: PreferencesWindow) {
+    init(parentWindow: PreferencesWindow, contentViewVM: ContentViewModel) {
         self.parentWindow = parentWindow
+        self.contentViewVM = contentViewVM
     }
     
     // MARK: - Main Body
@@ -168,7 +171,40 @@ struct PreferencesView: View {
                 }
             }
             .padding()
-            
+
+            Divider()
+
+            // Debugging Pane
+            VStack(alignment: .leading) {
+                Text("Debugging")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Toggle("Enable debug logging", isOn: $debugLoggingEnabled)
+                HStack {
+                    Button("Export Logs…") { exportLogs() }
+                    Spacer()
+                }
+                Text("Logs include the names of tracks played while logging is enabled.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+
+        }
+    }
+
+    private func exportLogs() {
+        switch LogExporter.export(report: contentViewVM.currentDiagnostics()) {
+        case .revealed:
+            break // Finder reveals the file; no alert needed.
+        case .noLogs:
+            alertTitle = Text("No logs yet")
+            alertMessage = Text("Turn on \u{201C}Enable debug logging\u{201D}, reproduce the problem, then export again.")
+            showingAlert = true
+        case .failed(let error):
+            alertTitle = Text("Couldn\u{2019}t export logs")
+            alertMessage = Text(error.localizedDescription)
+            showingAlert = true
         }
     }
     

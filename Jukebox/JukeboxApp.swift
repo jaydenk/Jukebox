@@ -375,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         if preferencesWindow == nil {
             preferencesWindow = PreferencesWindow()
-            let hostedPrefView = NSHostingView(rootView: PreferencesView(parentWindow: preferencesWindow))
+            let hostedPrefView = NSHostingView(rootView: PreferencesView(parentWindow: preferencesWindow, contentViewVM: contentViewVM))
             preferencesWindow.contentView = hostedPrefView
         }
 
