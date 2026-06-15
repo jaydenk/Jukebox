@@ -66,6 +66,21 @@ Clicking the button next to the connect option gives you the prompt to connect t
 - 30-second delay before hiding track info after pausing
 - Launch at login support via LaunchAtLogin-Modern
 
+## Debug logging
+
+If you hit a problem (for example, missing album art), you can capture logs to send along
+with a bug report:
+
+1. Open **Preferences ▸ Debugging** and turn on **Enable debug logging**.
+2. Reproduce the problem (e.g. play the track whose artwork is missing).
+3. Click **Export Logs…**. Jukebox writes a `Jukebox-Diagnostics-<timestamp>.txt` file and
+   reveals it in Finder.
+4. Attach that file to your GitHub issue or email.
+
+The log is stored locally at
+`~/Library/Application Support/Jukebox/Logs/Jukebox.log` and is never sent anywhere unless
+you export and share it. It includes the names of tracks played while logging was enabled.
+
 ## Attributions
 
 - [Sparkle](https://sparkle-project.org) for update delivery

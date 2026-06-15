@@ -201,8 +201,10 @@ redaction beyond that (the values are the point of a diagnostic log).
 
 ## 7. Testing
 
-- **Unit tests (pure pieces, no AppKit):**
-  - `FileLogSink` rotation: write past the cap → rolls to `.1`, fresh file started,
+- **Verification of pure pieces (standalone `swiftc`, no test target):** `scripts/verify-logging.swift`
+  is compiled together with the real `LogLine`, `LogFileWriter`, `TrackSourceType`, and
+  `DiagnosticsReport` source files (no copies) and run as an executable. It asserts:
+  - `LogFileWriter` rotation: write past the cap → rolls to `.1`, fresh file started,
     bounded total size.
   - `LogLine` formatting: timestamp/category/level/message shape is stable.
   - `DiagnosticsReport` header generation from injected values.
