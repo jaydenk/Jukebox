@@ -157,7 +157,7 @@ class ContentViewModel: ObservableObject {
                let url = URL(string: artworkURLString) {
                 URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
                     guard let data = data, error == nil else {
-                        print(error!.localizedDescription)
+                        Log.artwork.error("Spotify artwork fetch failed: \(error!.localizedDescription)")
                         return
                     }
                     DispatchQueue.main.async {
@@ -185,17 +185,43 @@ class ContentViewModel: ObservableObject {
             // from the previously playing track. Apple Music delivers artwork
             // data asynchronously, so when artwork exists we poll briefly for the
             // data to arrive — and still clear it if it never materialises.
-            if (self.appleMusicApp?.currentTrack?.artworks?().count ?? 0) == 0 {
+            if let diagnostics = makeAppleMusicTrackDiagnostics() {
+                Log.artwork.debug("Apple Music track: \(diagnostics.description)")
+            }
+            let artworkCount = self.appleMusicApp?.currentTrack?.artworks?().count ?? 0
+            Log.artwork.debug("artworks().count = \(artworkCount)")
+
+            if artworkCount == 0 {
+                Log.artwork.notice("No artwork present for current track; clearing album art")
                 self.track.albumArt = NSImage()
             } else {
                 var count = 0
                 var waitForData: (() -> Void)!
                 waitForData = {
                     let art = self.appleMusicApp?.currentTrack?.artworks?()[0] as! MusicArtwork
-                    if art.data != nil && !art.data!.isEmpty() {
-                        self.track.albumArt = art.data!
+                    let dataImage = art.data
+                    let dataIsEmpty = dataImage?.isEmpty() ?? true
+                    if dataImage != nil && !dataIsEmpty {
+                        Log.artwork.info("Artwork resolved from `data` on attempt \(count) "
+                            + "(size \(Int(dataImage!.size.width))x\(Int(dataImage!.size.height)))")
+                        self.track.albumArt = dataImage!
                     } else {
+                        // Diagnose why `data` is unusable and whether `rawData` has bytes.
+                        let rawDesc: String
+                        switch art.rawData {
+                        case let bytes as Data:   rawDesc = "Data(\(bytes.count) bytes)"
+                        case let bytes as NSData: rawDesc = "NSData(\(bytes.length) bytes)"
+                        case let other?:          rawDesc = "\(type(of: other))"
+                        default:                  rawDesc = "nil"
+                        }
+                        Log.artwork.debug("attempt \(count): "
+                            + "data=\(dataImage == nil ? "nil" : "empty=\(dataIsEmpty)") "
+                            + "format=\(art.format.map { "\($0)" } ?? "nil") "
+                            + "downloaded=\(art.downloaded.map { "\($0)" } ?? "nil") "
+                            + "rawData=\(rawDesc)")
                         if count > 20 {
+                            Log.artwork.error("Artwork timed out after \(count) attempts; "
+                                + "`data` never produced a usable image. rawData=\(rawDesc)")
                             self.track.albumArt = NSImage()
                             return
                         }
@@ -215,9 +241,61 @@ class ContentViewModel: ObservableObject {
         
         // Post notification to update the menu bar track title
         updateMenuBarText()
-        
+
     }
-    
+
+    // MARK: - Diagnostics
+
+    /// Reads the current Apple Music track's source signals via ScriptingBridge.
+    /// Property reads are optional-guarded — an inapplicable property (e.g.
+    /// `location` on a streamed track) returns nil rather than crashing.
+    private func makeAppleMusicTrackDiagnostics() -> TrackDiagnostics? {
+        guard let track = appleMusicApp?.currentTrack else { return nil }
+        let address = (track as? MusicURLTrack)?.address
+        let hasAddress = !(address?.isEmpty ?? true)
+        let hasLocation = (track as? MusicFileTrack)?.location != nil
+        let cloudStatusName = Self.cloudStatusName(track.cloudStatus)
+        let source = TrackDiagnostics.classify(hasAddress: hasAddress,
+                                                hasFileLocation: hasLocation,
+                                                cloudStatus: cloudStatusName)
+        return TrackDiagnostics(
+            sourceType: source,
+            cloudStatus: cloudStatusName,
+            kind: track.kind ?? "",
+            mediaKind: Self.mediaKindName(track.mediaKind),
+            hasLocation: hasLocation,
+            sizeBytes: track.size ?? 0,
+            address: hasAddress ? address : nil)
+    }
+
+    private static func cloudStatusName(_ status: MusicEClS?) -> String {
+        switch status {
+        case .purchased: return "purchased"
+        case .matched: return "matched"
+        case .uploaded: return "uploaded"
+        case .subscription: return "subscription"
+        case .ineligible: return "ineligible"
+        case .removed: return "removed"
+        case .error: return "error"
+        case .duplicate: return "duplicate"
+        case .noLongerAvailable: return "noLongerAvailable"
+        case .notUploaded: return "notUploaded"
+        case .unknown: return "unknown"
+        case .none: return "unavailable"
+        @unknown default: return "unrecognised"
+        }
+    }
+
+    private static func mediaKindName(_ kind: MusicEMdK?) -> String {
+        switch kind {
+        case .song: return "song"
+        case .musicVideo: return "musicVideo"
+        case .unknown: return "unknown"
+        case .none: return "unavailable"
+        @unknown default: return "unrecognised"
+        }
+    }
+
     private func updateMenuBarText(isStopped: Bool = false) {
         DispatchQueue.main.async { [weak self] in
             guard let self, let title = self.track.title as String?,
