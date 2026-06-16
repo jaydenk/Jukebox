@@ -124,7 +124,22 @@ echo "==> Committing and pushing appcast..."
 cd "$REPO_DIR"
 git add docs/appcast.xml
 git commit -m "Update appcast for v$VERSION release"
-git push origin main
+# Push the CURRENT HEAD to main. `git push origin main` pushes the local 'main'
+# ref (refs/heads/main), NOT the checked-out branch — so if this script is run from
+# a feature/release branch, the commit just made is never pushed and the push
+# silently no-ops ("Everything up-to-date", exit 0). HEAD:main always publishes this
+# commit; a non-fast-forward is rejected loudly instead of dropped silently.
+git push origin HEAD:main
+
+# Confirm the appcast actually reached origin/main — a silent no-op or rejected push
+# would otherwise leave GitHub Pages serving the previous version.
+git fetch origin --quiet
+if ! git show "origin/main:docs/appcast.xml" | grep -q "<sparkle:version>$VERSION<"; then
+    echo "Error: appcast for v$VERSION did NOT reach origin/main — the update feed was not published." >&2
+    echo "       Push it manually from the release commit: git push origin HEAD:main" >&2
+    exit 1
+fi
+echo "    appcast for v$VERSION confirmed on origin/main"
 
 echo ""
 echo "==> Release v$VERSION complete!"
