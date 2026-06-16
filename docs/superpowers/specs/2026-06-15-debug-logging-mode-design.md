@@ -238,20 +238,34 @@ later follow-up. What landed beyond the logging feature:
 2. **`data` crash (`unrecognized selector`).** `MusicArtwork.data` (declared `NSImage`)
    returns an `NSAppleEventDescriptor` at runtime; `NSImage.isEmpty()` → `cgImage(...)` on it
    crashed. Stopped calling NSImage methods on `data`.
-3. **Artwork fix (resolves the original empty-grey-square bug).** Both `data` (→ descriptor)
-   and `rawData` (→ opaque `SBObject` proxy) fail to yield bytes through ScriptingBridge on
-   26.5. Album art is now recovered by resolving the `rawData` proxy via `SBObject.get()`
-   and/or reading the `data` descriptor's payload (`NSAppleEventDescriptor.data`), then
-   `NSImage(data:)`.
-4. **`SBElementArray.first` returns nil** even when `count > 0` (lazy faulting-proxy
+3. **Artwork fix — cross-OS resolver (resolves the original empty-grey-square bug).** Music's
+   artwork accessors behave differently per OS: on **macOS ≤15** `MusicArtwork.data` is a
+   genuine `NSImage` (and `rawData`/descriptor return nothing), whereas on **macOS 26.5** `data`
+   is an `NSAppleEventDescriptor` and `rawData` an opaque `SBObject` proxy. The resolver now
+   tries, in order: `data`-as-`NSImage` (safe on 26.5 — a descriptor fails the cast and falls
+   through), then `rawData` bytes, then the resolved `rawData` proxy via `SBObject.get()`, then
+   the `data` descriptor payload (`NSAppleEventDescriptor.data`), then `NSImage(data:)`. Verified
+   on both OSes with correct per-track covers (macOS 15 via `data(NSImage)`, 26.5 via
+   `data-descriptor`).
+4. **Async artwork loading.** Apple Music populates `artworks()` asynchronously, so `count` is
+   often 0 right at a track change. The poll now retries on `count == 0` (clearing stale art on
+   the first miss, timing out after ~5 s) instead of bailing immediately.
+5. **`SBElementArray.first` returns nil** even when `count > 0` (lazy faulting-proxy
    collection); reverted to the `[0]` subscript and made the guard log on miss.
-5. **Track source-type misclassification.** Streamed Apple Music tracks report a `location`
+6. **Track source-type misclassification.** Streamed Apple Music tracks report a `location`
    and `size == 0` on 26.5 (and `cloudStatus` bridges to `unrecognised`), so the
    `hasLocation → localFile` heuristic was wrong. Now size-based: a local file needs a
    `file://` location **and** `size > 0`; `size == 0` ⇒ streamed.
+7. **Preferences window clipped.** The new Debugging pane overflowed the fixed 320 pt window
+   (clipping "Export Logs…"); window height raised to 450 pt.
+8. **Popover layout differed across OSes.** On macOS 26 `NSPopover` ignored `contentSize` and
+   the host `NSHostingView.sizingOptions`, rendering larger than the macOS 15 layout; fixed by
+   setting `contentViewController.preferredContentSize`.
 
-These macOS-26.5 ScriptingBridge findings were captured as reusable gotchas in the
-`swift-gotchas` skill (items 6–10).
+These findings were captured as reusable gotchas: `swift-gotchas` items 6–11 (the
+ScriptingBridge/artwork chain) and `appkit-gotchas` (the NSPopover-sizing one).
 
-Still genuinely deferred: the alternative export channels (share sheet, clipboard, GitHub
-issue) and an AVFoundation embedded-artwork path for local files.
+Still genuinely deferred: artwork for pure-streamed 26.5 tracks that expose nothing via
+scripting (`count == 0` forever) — would need a non-scripting source (MediaRemote now-playing,
+or MusicKit); the alternative export channels (share sheet, clipboard, GitHub issue); and an
+AVFoundation embedded-artwork path for local files.
