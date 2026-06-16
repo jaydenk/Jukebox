@@ -281,18 +281,26 @@ class ContentViewModel: ObservableObject {
         guard let track = appleMusicApp?.currentTrack else { return nil }
         let address = (track as? MusicURLTrack)?.address
         let hasAddress = !(address?.isEmpty ?? true)
-        let hasLocation = (track as? MusicFileTrack)?.location != nil
+        // On macOS 26.5 streamed Apple Music tracks also report a `location`, so a genuine
+        // local file is distinguished by a file:// URL AND a non-zero byte size — not by the
+        // mere presence of a location.
+        // `location` is doubly-optional here (the @objc-optional member returns URL?),
+        // so collapse URL?? -> URL? before testing the scheme.
+        let locationURL = (track as? MusicFileTrack)?.location ?? nil
+        let hasFileLocation = locationURL?.isFileURL == true
+        let sizeBytes = track.size ?? 0
         let cloudStatusName = Self.cloudStatusName(track.cloudStatus)
         let source = TrackDiagnostics.classify(hasAddress: hasAddress,
-                                                hasFileLocation: hasLocation,
-                                                cloudStatus: cloudStatusName)
+                                                hasFileLocation: hasFileLocation,
+                                                cloudStatus: cloudStatusName,
+                                                sizeBytes: sizeBytes)
         return TrackDiagnostics(
             sourceType: source,
             cloudStatus: cloudStatusName,
             kind: track.kind ?? "",
             mediaKind: Self.mediaKindName(track.mediaKind),
-            hasLocation: hasLocation,
-            sizeBytes: track.size ?? 0,
+            hasLocation: hasFileLocation,
+            sizeBytes: sizeBytes,
             address: hasAddress ? address : nil)
     }
 
@@ -310,8 +318,18 @@ class ContentViewModel: ObservableObject {
         case .notUploaded: return "notUploaded"
         case .unknown: return "unknown"
         case .none: return "unavailable"
-        @unknown default: return "unrecognised"
+        @unknown default: return "unrecognised(\(Self.fourCC(status?.rawValue ?? 0)))"
         }
+    }
+
+    /// Formats a FourCharCode (e.g. a MusicEClS raw value) as a printable tag for logs, so
+    /// an unmapped cloud-status value seen in the field can be identified and mapped.
+    private static func fourCC(_ code: UInt32) -> String {
+        let bytes = [UInt8(truncatingIfNeeded: code >> 24), UInt8(truncatingIfNeeded: code >> 16),
+                     UInt8(truncatingIfNeeded: code >> 8), UInt8(truncatingIfNeeded: code)]
+        let printable = bytes.allSatisfy { $0 >= 0x20 && $0 < 0x7F }
+        let ascii = printable ? "'\(String(bytes: bytes, encoding: .ascii) ?? "")' " : ""
+        return "\(ascii)0x\(String(code, radix: 16))"
     }
 
     private static func mediaKindName(_ kind: MusicEMdK?) -> String {

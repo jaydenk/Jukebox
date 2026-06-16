@@ -22,10 +22,16 @@ struct TrackDiagnostics: CustomStringConvertible {
     /// Cloud statuses that indicate an Apple Music cloud/catalogue track.
     private static let cloudStatuses: Set<String> = ["subscription", "purchased", "matched", "uploaded"]
 
-    static func classify(hasAddress: Bool, hasFileLocation: Bool, cloudStatus: String) -> TrackSourceType {
+    /// Size is the local-file discriminator: a genuine local file has a file:// location
+    /// AND a non-zero byte size. On macOS 26.5 streamed Apple Music tracks also report a
+    /// location, so location alone is not sufficient — a zero size (no local bytes) means
+    /// the track is streamed/cloud, not local. A known iCloud/Apple-Music cloud status wins
+    /// outright.
+    static func classify(hasAddress: Bool, hasFileLocation: Bool, cloudStatus: String, sizeBytes: Int64) -> TrackSourceType {
         if hasAddress { return .internetRadioStream }
-        if hasFileLocation { return .localFile }
         if cloudStatuses.contains(cloudStatus) { return .streamed }
+        if hasFileLocation && sizeBytes > 0 { return .localFile }
+        if sizeBytes == 0 { return .streamed }
         return .unknown
     }
 

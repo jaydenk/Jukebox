@@ -52,16 +52,20 @@ struct VerifyLogging {
         try? FileManager.default.removeItem(at: tmpDir)
 
         // TrackSourceType classifier (pure)
-        expect(TrackDiagnostics.classify(hasAddress: true, hasFileLocation: false, cloudStatus: "unknown") == .internetRadioStream,
+        expect(TrackDiagnostics.classify(hasAddress: true, hasFileLocation: false, cloudStatus: "unknown", sizeBytes: 0) == .internetRadioStream,
                "an address means internet radio stream")
-        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: true, cloudStatus: "unknown") == .localFile,
-               "a file location means local file")
-        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "subscription") == .streamed,
-               "subscription with no location means streamed")
-        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "purchased") == .streamed,
-               "purchased cloud track with no location means streamed")
-        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "unknown") == .unknown,
-               "no signals means unknown")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: true, cloudStatus: "unknown", sizeBytes: 5_000_000) == .localFile,
+               "a file:// location WITH a non-zero size means local file")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "subscription", sizeBytes: 0) == .streamed,
+               "subscription means streamed")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: true, cloudStatus: "purchased", sizeBytes: 9_000_000) == .streamed,
+               "a known cloud status wins even with a local file present")
+        // Regression (macOS 26.5): a streamed Apple Music track reports a location but size 0 —
+        // it must NOT be classified localFile.
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: true, cloudStatus: "unrecognised", sizeBytes: 0) == .streamed,
+               "location present but zero size (no local bytes) means streamed, not localFile")
+        expect(TrackDiagnostics.classify(hasAddress: false, hasFileLocation: false, cloudStatus: "unknown", sizeBytes: 1234) == .unknown,
+               "no address, no cloud status, no file location, non-zero size means unknown")
         let diag = TrackDiagnostics(sourceType: .streamed, cloudStatus: "subscription", kind: "Apple Music AAC audio file",
                                     mediaKind: "song", hasLocation: false, sizeBytes: 0, address: nil)
         expect(diag.description.contains("source=streamed"), "description must include derived source")
