@@ -198,30 +198,39 @@ class ContentViewModel: ObservableObject {
                 var count = 0
                 var waitForData: (() -> Void)!
                 waitForData = {
-                    let art = self.appleMusicApp?.currentTrack?.artworks?()[0] as! MusicArtwork
-                    let dataImage = art.data
-                    let dataIsEmpty = dataImage?.isEmpty() ?? true
-                    if dataImage != nil && !dataIsEmpty {
-                        Log.artwork.info("Artwork resolved from `data` on attempt \(count) "
-                            + "(size \(Int(dataImage!.size.width))x\(Int(dataImage!.size.height)))")
-                        self.track.albumArt = dataImage!
+                    guard let art = self.appleMusicApp?.currentTrack?.artworks?().first as? MusicArtwork else {
+                        self.track.albumArt = NSImage()
+                        return
+                    }
+                    // Build the image from `rawData` (the artwork bytes in their original
+                    // format). The legacy `data` ("picture") property returns a raw
+                    // NSAppleEventDescriptor on macOS 26.5 — NOT an NSImage — so calling any
+                    // NSImage method on it crashes (unrecognized selector) and it never
+                    // yields artwork. `rawData` is the supported path.
+                    let rawBytes: Data?
+                    switch art.rawData {
+                    case let bytes as Data:   rawBytes = bytes
+                    case let bytes as NSData: rawBytes = bytes as Data
+                    default:                  rawBytes = nil
+                    }
+                    if let bytes = rawBytes, !bytes.isEmpty, let image = NSImage(data: bytes) {
+                        Log.artwork.info("Artwork resolved from `rawData` on attempt \(count) "
+                            + "(\(bytes.count) bytes, \(Int(image.size.width))x\(Int(image.size.height)))")
+                        self.track.albumArt = image
                     } else {
-                        // Diagnose why `data` is unusable and whether `rawData` has bytes.
-                        let rawDesc: String
-                        switch art.rawData {
-                        case let bytes as Data:   rawDesc = "Data(\(bytes.count) bytes)"
-                        case let bytes as NSData: rawDesc = "NSData(\(bytes.length) bytes)"
-                        case let other?:          rawDesc = "\(type(of: other))"
-                        default:                  rawDesc = "nil"
-                        }
+                        // Not ready yet (or unavailable). Log the signals, including the
+                        // runtime class of `data`/`rawData` via a SAFE type check — never
+                        // call NSImage methods on `data` (it may be an NSAppleEventDescriptor).
+                        let dataClass = (art.data as AnyObject?).map { "\(type(of: $0))" } ?? "nil"
+                        let rawClass = (art.rawData as AnyObject?).map { "\(type(of: $0))" } ?? "nil"
                         Log.artwork.debug("attempt \(count): "
-                            + "data=\(dataImage == nil ? "nil" : "empty=\(dataIsEmpty)") "
+                            + "rawData=\(rawBytes.map { "\($0.count) bytes" } ?? "no usable bytes (class \(rawClass))") "
+                            + "data-class=\(dataClass) "
                             + "format=\(art.format.map { "\($0)" } ?? "nil") "
-                            + "downloaded=\(art.downloaded.map { "\($0)" } ?? "nil") "
-                            + "rawData=\(rawDesc)")
+                            + "downloaded=\(art.downloaded.map { "\($0)" } ?? "nil")")
                         if count > 20 {
                             Log.artwork.error("Artwork timed out after \(count) attempts; "
-                                + "`data` never produced a usable image. rawData=\(rawDesc)")
+                                + "`rawData` never produced a usable image")
                             self.track.albumArt = NSImage()
                             return
                         }
