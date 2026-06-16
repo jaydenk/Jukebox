@@ -185,11 +185,15 @@ class ContentViewModel: ObservableObject {
             // from the previously playing track. Apple Music delivers artwork
             // data asynchronously, so when artwork exists we poll briefly for the
             // data to arrive — and still clear it if it never materialises.
-            if let diagnostics = makeAppleMusicTrackDiagnostics() {
-                Log.artwork.debug("Apple Music track: \(diagnostics.description)")
+            // These diagnostics make extra ScriptingBridge round-trips purely for
+            // logging, so skip them entirely unless debug logging is enabled.
+            if FileLogSink.shared.isEnabled {
+                if let diagnostics = makeAppleMusicTrackDiagnostics() {
+                    Log.artwork.debug("Apple Music track: \(diagnostics.description)")
+                }
+                let artworkCount = self.appleMusicApp?.currentTrack?.artworks?().count ?? 0
+                Log.artwork.debug("artworks().count = \(artworkCount)")
             }
-            let artworkCount = self.appleMusicApp?.currentTrack?.artworks?().count ?? 0
-            Log.artwork.debug("artworks().count = \(artworkCount)")
 
             // Always poll: Apple Music loads streamed artwork asynchronously, so artworks()
             // is frequently empty (count 0) at the moment of a track change and populates a

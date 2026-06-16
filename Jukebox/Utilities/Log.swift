@@ -1,8 +1,12 @@
 import Foundation
 import os
 
-/// App-wide logging facade. Every call goes to os.Logger (always) and to
-/// FileLogSink (only when debug logging is enabled).
+/// App-wide logging facade. Logging is gated on the opt-in `debugLoggingEnabled`
+/// preference: when it is off, the message autoclosure is never evaluated — so
+/// building diagnostic strings (some of which make ScriptingBridge round-trips)
+/// costs nothing — and nothing is written to os.Logger or the file. When it is on,
+/// each line goes to os.Logger (.public, so it is readable in Console.app and in
+/// exported logs the user chooses to share) and to FileLogSink.
 enum Log {
     static let general = LogCategory("general")
     static let playback = LogCategory("playback")
@@ -21,20 +25,22 @@ struct LogCategory {
         self.logger = Logger(subsystem: Constants.Logging.subsystem, category: name)
     }
 
-    func debug(_ message: String)  { emit(.debug, message) }
-    func info(_ message: String)   { emit(.info, message) }
-    func notice(_ message: String) { emit(.notice, message) }
-    func error(_ message: String)  { emit(.error, message) }
+    func debug(_ message: @autoclosure () -> String)  { emit(.debug, message) }
+    func info(_ message: @autoclosure () -> String)   { emit(.info, message) }
+    func notice(_ message: @autoclosure () -> String) { emit(.notice, message) }
+    func error(_ message: @autoclosure () -> String)  { emit(.error, message) }
 
-    private func emit(_ level: Level, _ message: String) {
-        // .public so values are readable in Console.app and exported logs —
-        // this is opt-in diagnostic logging the user chooses to share.
+    private func emit(_ level: Level, _ message: () -> String) {
+        // Opt-in only. Bail before evaluating the message so callers never pay for
+        // building log strings (or the reads behind them) while logging is disabled.
+        guard FileLogSink.shared.isEnabled else { return }
+        let text = message()
         switch level {
-        case .debug:  logger.debug("\(message, privacy: .public)")
-        case .info:   logger.info("\(message, privacy: .public)")
-        case .notice: logger.notice("\(message, privacy: .public)")
-        case .error:  logger.error("\(message, privacy: .public)")
+        case .debug:  logger.debug("\(text, privacy: .public)")
+        case .info:   logger.info("\(text, privacy: .public)")
+        case .notice: logger.notice("\(text, privacy: .public)")
+        case .error:  logger.error("\(text, privacy: .public)")
         }
-        FileLogSink.shared.write(category: name, level: level.rawValue, message: message)
+        FileLogSink.shared.write(category: name, level: level.rawValue, message: text)
     }
 }

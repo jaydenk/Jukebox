@@ -191,6 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             if nowPlayingWindow.isVisible {
                 nowPlayingWindow.orderOut(nil)
                 contentViewVM.pauseTimer()
+                contentViewVM.isResizing = false   // clear any latched live-resize state
             } else {
                 showNowPlayingWindow(relativeTo: statusBarItemButton)
             }
@@ -217,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         } else {
             nowPlayingWindow.orderOut(nil)
             contentViewVM.pauseTimer()
+            contentViewVM.isResizing = false   // clear any latched live-resize state
         }
     }
 

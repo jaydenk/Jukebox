@@ -71,6 +71,10 @@ struct NowPlayingCompactView: View {
                 }
                 .padding(Constants.NowPlaying.controlPadding)
                 .opacity((isShowingPlaybackControls && !contentViewVM.isResizing) ? 1 : 0)
+                // Faded-out controls must not receive clicks. The ScrubBar's
+                // zero-distance DragGesture would otherwise commit a seek on a
+                // blind click in the (invisible) lower strip.
+                .allowsHitTesting(isShowingPlaybackControls && !contentViewVM.isResizing)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

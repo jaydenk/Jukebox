@@ -184,7 +184,7 @@ struct PreferencesView: View {
                     Button("Export Logs…") { exportLogs() }
                     Spacer()
                 }
-                Text("Logs include the names of tracks played while logging is enabled.")
+                Text("Logs record playback and artwork diagnostics (and internet-radio stream URLs) — not the names of the tracks you play.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

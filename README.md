@@ -40,6 +40,9 @@ Clicking the button next to the connect option gives you the prompt to connect t
 - **Resizable floating window** — drag any edge to resize the pinned now playing window; it stays square and remembers its size as well as its position
 - **Right-click menu** — right-click the floating window to unpin, toggle "keep on top", open preferences, or quit (the hover pin button has been removed)
 - **Seek from the floating window** — hover to reveal a progress bar you can click or drag to scrub, now working for both Spotify and Apple Music
+- **Debug logging** — a new Debugging pane in Preferences captures diagnostic logs you can export with a bug report (see [Debug logging](#debug-logging) below)
+- **Apple Music artwork on macOS 26** — album art now resolves for streamed Apple Music tracks on macOS 26.5, where the artwork data is delivered differently, with a short retry while it loads asynchronously
+- **Stability fixes** — fixed a crash on macOS 26.5 when reading the location of streamed catalogue tracks, plus a macOS 15 artwork regression and a clipped Preferences window
 
 ### v1.2.1
 
@@ -79,7 +82,8 @@ with a bug report:
 
 The log is stored locally at
 `~/Library/Application Support/Jukebox/Logs/Jukebox.log` and is never sent anywhere unless
-you export and share it. It includes the names of tracks played while logging was enabled.
+you export and share it. It records playback and artwork diagnostics (and, for internet
+radio, the stream URL) — not the names of the tracks you play.
 
 ## Attributions
 

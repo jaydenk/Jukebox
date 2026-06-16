@@ -17,7 +17,9 @@ final class FileLogSink {
         writer = url.map { LogFileWriter(fileURL: $0, maxBytes: Constants.Logging.maxLogBytes) }
     }
 
-    private var isEnabled: Bool {
+    /// Reflects the opt-in `debugLoggingEnabled` preference. Exposed so the Log
+    /// facade can skip building and emitting messages entirely when logging is off.
+    var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: Constants.Logging.enabledKey)
     }
 
