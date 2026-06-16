@@ -1,9 +1,9 @@
 # Debug Logging Mode — Design
 
 - **Date:** 2026-06-15
-- **Status:** Approved (design) — pending implementation plan
+- **Status:** Implemented and shipped on `feature/debug-logging` (PR #4). Scope grew during on-device verification — see the Addendum (§9).
 - **Author:** Jayden Kerr (with Claude)
-- **Branch context:** `feature/floating-window-enhancements`
+- **Branch context:** implemented on `feature/debug-logging` (stacked on `feature/floating-window-enhancements`)
 
 ## 1. Background and motivation
 
@@ -34,6 +34,10 @@ JPEG/PNG bytes) still works.
 is the instrument that will confirm or refute the `data`-vs-`rawData` theory. The artwork
 fix is a separate follow-up, informed by what the logs show. This keeps us honest to
 "diagnose the root cause before applying a fix".
+
+> **Superseded (2026-06-16):** on-device verification on macOS 26.5 confirmed the cause and
+> surfaced several ScriptingBridge breakages, so the artwork fix (and the crashes it exposed)
+> landed in this same branch rather than as a later follow-up. See the Addendum (§9).
 
 ## 2. Goals / non-goals
 
@@ -219,3 +223,35 @@ redaction beyond that (the values are the point of a diagnostic log).
 - The artwork **fix** (likely switching the Apple Music path to `rawData`), to be designed
   once the logs confirm the cause.
 - Any of the deferred export channels (share sheet, clipboard, GitHub issue).
+
+## 9. Addendum — on-device verification on macOS 26.5 (2026-06-16)
+
+On-device testing on macOS 26.5 (build 25F80) confirmed the root cause and surfaced a chain
+of ScriptingBridge breakages specific to that OS. Because each blocked the next, the artwork
+fix that §1 deferred — plus the crashes it exposed — shipped on this branch rather than as a
+later follow-up. What landed beyond the logging feature:
+
+1. **`location` crash (`EXC_BREAKPOINT`).** The diagnostics read `MusicFileTrack.location`,
+   declared non-optional `URL`; for a streamed track the missing value bridges nil into the
+   non-optional value type and traps. Fixed by typing `location` as `URL?` in the generated
+   ScriptingBridge header.
+2. **`data` crash (`unrecognized selector`).** `MusicArtwork.data` (declared `NSImage`)
+   returns an `NSAppleEventDescriptor` at runtime; `NSImage.isEmpty()` → `cgImage(...)` on it
+   crashed. Stopped calling NSImage methods on `data`.
+3. **Artwork fix (resolves the original empty-grey-square bug).** Both `data` (→ descriptor)
+   and `rawData` (→ opaque `SBObject` proxy) fail to yield bytes through ScriptingBridge on
+   26.5. Album art is now recovered by resolving the `rawData` proxy via `SBObject.get()`
+   and/or reading the `data` descriptor's payload (`NSAppleEventDescriptor.data`), then
+   `NSImage(data:)`.
+4. **`SBElementArray.first` returns nil** even when `count > 0` (lazy faulting-proxy
+   collection); reverted to the `[0]` subscript and made the guard log on miss.
+5. **Track source-type misclassification.** Streamed Apple Music tracks report a `location`
+   and `size == 0` on 26.5 (and `cloudStatus` bridges to `unrecognised`), so the
+   `hasLocation → localFile` heuristic was wrong. Now size-based: a local file needs a
+   `file://` location **and** `size > 0`; `size == 0` ⇒ streamed.
+
+These macOS-26.5 ScriptingBridge findings were captured as reusable gotchas in the
+`swift-gotchas` skill (items 6–10).
+
+Still genuinely deferred: the alternative export channels (share sheet, clipboard, GitHub
+issue) and an AVFoundation embedded-artwork path for local files.
