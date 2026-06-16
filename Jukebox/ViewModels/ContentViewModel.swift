@@ -198,7 +198,13 @@ class ContentViewModel: ObservableObject {
                 var count = 0
                 var waitForData: (() -> Void)!
                 waitForData = {
-                    guard let art = self.appleMusicApp?.currentTrack?.artworks?().first as? MusicArtwork else {
+                    // SBElementArray is a lazy ScriptingBridge collection: use its [index]
+                    // subscript (a faulting proxy element), NOT Swift's `.first`, which
+                    // yields nil for it even when count > 0. Never return silently.
+                    let artworks = self.appleMusicApp?.currentTrack?.artworks?()
+                    guard let artworks, artworks.count > 0, let art = artworks[0] as? MusicArtwork else {
+                        Log.artwork.debug("attempt \(count): no usable artwork object on re-read "
+                            + "(count=\(artworks?.count ?? 0)); clearing album art")
                         self.track.albumArt = NSImage()
                         return
                     }
