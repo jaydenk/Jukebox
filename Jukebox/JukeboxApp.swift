@@ -86,6 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // Initialize Popover Content
         popoverHostView = NSHostingView(rootView: ContentView(contentViewVM: contentViewVM))
         popoverHostView.frame = NSRect(x: 0, y: 0, width: popoverSize.width, height: popoverSize.height)
+        // Frame-driven sizing: on macOS 14+ NSHostingView reports its SwiftUI intrinsic size
+        // by default, which lets the popover grow past contentSize on macOS 26 (extra margin
+        // around the fixed-size album art). sizingOptions = [] makes it respect the 272x350
+        // frame, matching the tighter macOS 15 layout. (Same fix the floating window uses.)
+        popoverHostView.sizingOptions = []
 
         popover = NSPopover()
         popover.contentSize = popoverSize
