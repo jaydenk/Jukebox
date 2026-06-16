@@ -492,13 +492,13 @@ extension SBObject: MusicTrack {}
 
 // MARK: MusicAudioCDTrack
 @objc public protocol MusicAudioCDTrack: MusicTrack {
-    @objc optional var location: URL { get } // the location of the file represented by this track
+    @objc optional var location: URL? { get } // the location of the file (Optional: nil for streamed tracks; a non-optional URL traps when ScriptingBridge bridges the missing value)
 }
 extension SBObject: MusicAudioCDTrack {}
 
 // MARK: MusicFileTrack
 @objc public protocol MusicFileTrack: MusicTrack {
-    @objc optional var location: URL { get } // the location of the file represented by this track
+    @objc optional var location: URL? { get } // the location of the file (Optional: nil for streamed tracks; a non-optional URL traps when ScriptingBridge bridges the missing value)
     @objc optional func refresh() // update file track information from the current information in the track’s file
     @objc optional func setLocation(_ location: URL!) // the location of the file represented by this track
 }
