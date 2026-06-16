@@ -199,8 +199,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 popover.performClose(statusBarItemButton)
             } else {
                 popover.show(relativeTo: statusBarItemButton.bounds, of: statusBarItemButton, preferredEdge: .minY)
-                Log.general.debug("Popover shown: contentSize=\(popover.contentSize) "
-                    + "hostFrame=\(popoverHostView.frame.size) hostFitting=\(popoverHostView.fittingSize)")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
         }
