@@ -208,35 +208,48 @@ class ContentViewModel: ObservableObject {
                         self.track.albumArt = NSImage()
                         return
                     }
-                    // Build the image from `rawData` (the artwork bytes in their original
-                    // format). The legacy `data` ("picture") property returns a raw
-                    // NSAppleEventDescriptor on macOS 26.5 — NOT an NSImage — so calling any
-                    // NSImage method on it crashes (unrecognized selector) and it never
-                    // yields artwork. `rawData` is the supported path.
-                    let rawBytes: Data?
-                    switch art.rawData {
-                    case let bytes as Data:   rawBytes = bytes
-                    case let bytes as NSData: rawBytes = bytes as Data
-                    default:                  rawBytes = nil
+                    // macOS 26.5: Music's ScriptingBridge artwork accessors don't return
+                    // decoded bytes — `rawData` comes back as an opaque SBObject proxy and
+                    // `data` as a raw NSAppleEventDescriptor. Recover bytes by trying, in order:
+                    // rawData as Data; resolving the rawData proxy via SBObject.get(); the data
+                    // descriptor's payload. Never call NSImage methods on `data` directly
+                    // (it can be an NSAppleEventDescriptor — that crashes 'unrecognized selector').
+                    func imageBytes(_ value: Any?) -> Data? {
+                        switch value {
+                        case let d as Data where !d.isEmpty:     return d
+                        case let d as NSData where d.length > 0: return d as Data
+                        default:                                 return nil
+                        }
                     }
-                    if let bytes = rawBytes, !bytes.isEmpty, let image = NSImage(data: bytes) {
-                        Log.artwork.info("Artwork resolved from `rawData` on attempt \(count) "
-                            + "(\(bytes.count) bytes, \(Int(image.size.width))x\(Int(image.size.height)))")
+                    let rawValue = art.rawData
+                    let dataValue = art.data
+                    let rawDirect = imageBytes(rawValue)
+                    let rawResolved = imageBytes(rawValue.flatMap { $0 as? SBObject }?.get())
+                    let descBytes = dataValue
+                        .flatMap { ($0 as AnyObject) as? NSAppleEventDescriptor }?.data
+                    let descResolved = (descBytes?.isEmpty == false) ? descBytes : nil
+                    let candidates: [(String, Data)] = [
+                        ("rawData", rawDirect),
+                        ("rawData.get()", rawResolved),
+                        ("data-descriptor", descResolved),
+                    ].compactMap { pair in pair.1.map { (pair.0, $0) } }
+                    if let hit = candidates.first(where: { NSImage(data: $0.1) != nil }),
+                       let image = NSImage(data: hit.1) {
+                        Log.artwork.info("Artwork resolved via \(hit.0) on attempt \(count) "
+                            + "(\(hit.1.count) bytes, \(Int(image.size.width))x\(Int(image.size.height)))")
                         self.track.albumArt = image
                     } else {
-                        // Not ready yet (or unavailable). Log the signals, including the
-                        // runtime class of `data`/`rawData` via a SAFE type check — never
-                        // call NSImage methods on `data` (it may be an NSAppleEventDescriptor).
-                        let dataClass = (art.data as AnyObject?).map { "\(type(of: $0))" } ?? "nil"
-                        let rawClass = (art.rawData as AnyObject?).map { "\(type(of: $0))" } ?? "nil"
                         Log.artwork.debug("attempt \(count): "
-                            + "rawData=\(rawBytes.map { "\($0.count) bytes" } ?? "no usable bytes (class \(rawClass))") "
-                            + "data-class=\(dataClass) "
+                            + "rawData=\(rawDirect?.count.description ?? "nil") "
+                            + "rawData.get()=\(rawResolved?.count.description ?? "nil") "
+                            + "data-descriptor=\(descResolved?.count.description ?? "nil") "
+                            + "data-class=\((dataValue as AnyObject?).map { "\(type(of: $0))" } ?? "nil") "
+                            + "rawData-class=\((rawValue as AnyObject?).map { "\(type(of: $0))" } ?? "nil") "
                             + "format=\(art.format.map { "\($0)" } ?? "nil") "
                             + "downloaded=\(art.downloaded.map { "\($0)" } ?? "nil")")
                         if count > 20 {
-                            Log.artwork.error("Artwork timed out after \(count) attempts; "
-                                + "`rawData` never produced a usable image")
+                            Log.artwork.error("Artwork timed out after \(count) attempts; no accessor "
+                                + "(rawData / rawData.get() / data descriptor) yielded a decodable image")
                             self.track.albumArt = NSImage()
                             return
                         }
