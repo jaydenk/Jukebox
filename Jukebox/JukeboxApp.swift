@@ -98,6 +98,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         popover.animates = true
         popover.contentViewController = NSViewController()
         popover.contentViewController?.view = popoverHostView
+        // Force the popover size. On macOS 26 `popover.contentSize` is honoured
+        // inconsistently (the popover grows past it); preferredContentSize is the canonical
+        // override that NSPopover respects.
+        popover.contentViewController?.preferredContentSize = popoverSize
 
         // Initialize Floating Window Content
         floatingHostView = SnapHostingView(rootView: NowPlayingCompactView(contentViewVM: contentViewVM))
@@ -195,6 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 popover.performClose(statusBarItemButton)
             } else {
                 popover.show(relativeTo: statusBarItemButton.bounds, of: statusBarItemButton, preferredEdge: .minY)
+                Log.general.debug("Popover shown: contentSize=\(popover.contentSize) "
+                    + "hostFrame=\(popoverHostView.frame.size) hostFitting=\(popoverHostView.fittingSize)")
                 NSApplication.shared.activate(ignoringOtherApps: true)
             }
         }
