@@ -191,10 +191,11 @@ class ContentViewModel: ObservableObject {
             let artworkCount = self.appleMusicApp?.currentTrack?.artworks?().count ?? 0
             Log.artwork.debug("artworks().count = \(artworkCount)")
 
-            if artworkCount == 0 {
-                Log.artwork.notice("No artwork present for current track; clearing album art")
-                self.track.albumArt = NSImage()
-            } else {
+            // Always poll: Apple Music loads streamed artwork asynchronously, so artworks()
+            // is frequently empty (count 0) at the moment of a track change and populates a
+            // second or two later. Re-check each attempt rather than bailing on the first
+            // empty read; clear stale art immediately, and time out if it never arrives.
+            do {
                 var count = 0
                 var waitForData: (() -> Void)!
                 waitForData = {
@@ -203,9 +204,19 @@ class ContentViewModel: ObservableObject {
                     // yields nil for it even when count > 0. Never return silently.
                     let artworks = self.appleMusicApp?.currentTrack?.artworks?()
                     guard let artworks, artworks.count > 0, let art = artworks[0] as? MusicArtwork else {
-                        Log.artwork.debug("attempt \(count): no usable artwork object on re-read "
-                            + "(count=\(artworks?.count ?? 0)); clearing album art")
-                        self.track.albumArt = NSImage()
+                        // No artwork yet — Apple Music may still be loading it. Clear any stale
+                        // art on the first miss, then keep polling until it appears or we time out.
+                        if count == 0 { self.track.albumArt = NSImage() }
+                        if count > 20 {
+                            Log.artwork.notice("No artwork after \(count) attempts "
+                                + "(count=\(artworks?.count ?? 0)); cleared album art")
+                            self.track.albumArt = NSImage()
+                            return
+                        }
+                        Log.artwork.debug("attempt \(count): artworks empty "
+                            + "(count=\(artworks?.count ?? 0)); waiting for async load")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { waitForData() }
+                        count += 1
                         return
                     }
                     // Resolve artwork across OS versions. On macOS <= 15 `data` is a genuine
