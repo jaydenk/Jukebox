@@ -35,6 +35,15 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Changelog
 
+### v1.3.5
+
+- **macOS 27 menu bar** — the menu bar item now uses the macOS 27 expanded interface session API, so the now playing popover takes part in keyboard navigation and menu tracking (slide from Jukebox to a neighbouring item and it switches like a menu). Earlier macOS versions keep the existing behaviour
+- **Corner resize grips** — move the pointer towards any corner of the floating window and a grip appears; drag it to resize from that corner (the opposite corner stays put). On macOS 15 and later the pointer changes to the resize cursor over the grip
+- **Floating window fixes** — the floating window can be dragged to move again, stays within its size limits (200–360 points) and no longer crashes while being resized or moved
+- **Menu bar right-click** — on macOS 27 the right-click menu now opens below the menu bar instead of over it
+- **Sparkle 2.10.1** — updater framework bumped from 2.9.1, picking up the macOS 27 delta-update fix, the 2.9.x security fixes and a fix for updates installing prematurely from Unicode-normalised paths
+- **Under the hood** — clean build under Xcode 27 with no warnings; the last stray console prints now go through the debug logging facade
+
 ### v1.3.0
 
 - **Resizable floating window** — drag any edge to resize the pinned now playing window; it stays square and remembers its size as well as its position

@@ -9,7 +9,7 @@ import SwiftUI
 import Sparkle
 import QuartzCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate, NSPopoverDelegate {
 
     @AppStorage("viewedOnboarding") var viewedOnboarding: Bool = false
     @AppStorage("nowPlayingPinned") private var nowPlayingPinned = false
@@ -38,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var onboardingWindow: OnboardingWindow!
     private var pauseTimer: Timer?
     private var isPaused: Bool = false
+    // Set while a performClose() is in flight so the several paths that can close the
+    // popover (item click, unpin, macOS 27 session end) never double-close it.
+    private var popoverCloseRequested = false
     private var barAnimator: StatusBarAnimator!
     private var updaterController: SPUStandardUpdaterController!
 
@@ -81,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func setupContentView() {
         let popoverSize = NSSize(width: 272, height: 350)
-        let floatingSize = NSSize(width: nowPlayingWindowWidth, height: nowPlayingWindowHeight)
+        let floatingSize = savedNowPlayingWindowSize()
 
         // Initialize Popover Content
         popoverHostView = NSHostingView(rootView: ContentView(contentViewVM: contentViewVM))
@@ -93,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         popoverHostView.sizingOptions = []
 
         popover = NSPopover()
+        popover.delegate = self
         popover.contentSize = popoverSize
         popover.behavior = .transient
         popover.animates = true
@@ -116,8 +120,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         nowPlayingWindow = NowPlayingWindow(
             contentRect: NSRect(x: 0, y: 0, width: floatingSize.width, height: floatingSize.height)
         )
-        nowPlayingWindow.contentView = floatingHostView
+        // The hosting view must NOT be the window's contentView. An NSHostingView that is a
+        // window's contentView takes over the window's sizing: on the first display cycle it
+        // resets contentMinSize/contentMaxSize to 0/infinity (dropping the 200–360 clamp),
+        // and after a live resize it animates the window toward its own preferred size,
+        // which fights the square aspect ratio and makes AppKit throw "more Update
+        // Constraints in Window passes than there are views in the window". sizingOptions = []
+        // does not stop this (verified on macOS 27.2). Hosting it inside a plain container
+        // leaves the window, not SwiftUI, as the single sizing authority.
+        let floatingContainer = NSView(frame: floatingHostView.frame)
+        floatingContainer.autoresizingMask = [.width, .height]
+        floatingContainer.addSubview(floatingHostView)
+        nowPlayingWindow.contentView = floatingContainer
         nowPlayingWindow.delegate = self
+        nowPlayingWindow.onCornerResizeBegan = { [weak self] in self?.floatingResizeDidBegin() }
+        nowPlayingWindow.onCornerResizeEnded = { [weak self] in self?.floatingResizeDidEnd() }
     }
 
     private func setupStatusBar() {
@@ -158,6 +175,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             statusBarItemButton.action = #selector(didClickStatusBarItem)
             statusBarItemButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
+
+        // macOS 27 rewrote the menu bar as a single system-owned window. A status item that
+        // shows a popover or window (rather than an NSMenu) is expected to drive it through
+        // the expanded interface session API instead of toggling it from the button action:
+        // the system begins a session on left click or keyboard activation and ends it when
+        // the item is clicked again, when the user moves to a neighbouring item (menu
+        // tracking) or when the popover closes. Once a delegate is set, left clicks no longer
+        // reach the button action; right clicks still do. Verified on macOS 27.0 with a
+        // throwaway spike before adoption.
+        if #available(macOS 27, *) {
+            statusBarItem.expandedInterfaceDelegate = self
+        }
     }
 
     // MARK: - Status Bar Handlers
@@ -169,13 +198,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         switch event.type {
         case .rightMouseUp:
-            statusBarItem.menu = statusBarMenu
-            statusBarItem.button?.performClick(nil)
+            showStatusBarMenu(with: event)
 
         default:
             toggleNowPlayingPresentation(statusBarItem.button)
         }
 
+    }
+
+    private func showStatusBarMenu(with event: NSEvent) {
+        guard let button = statusBarItem.button else { return }
+        if #available(macOS 27, *) {
+            // Assigning statusItem.menu and calling performClick starts a second expanded
+            // interface session under the delegate, and the system tears the menu down
+            // within ~300 ms, so the menu is popped up directly instead. It is anchored to
+            // the button's bottom-left corner (in the button's own coordinate space, which
+            // popUp(positioning:at:in:) interprets with the view's flippedness) so it drops
+            // below the menu bar like a status item menu. popUpContextMenu(_:with:for:) was
+            // tried first but places the menu's top-left at the mouse, i.e. over the bar.
+            let bounds = button.bounds
+            let gap: CGFloat = 5
+            let anchor = NSPoint(x: bounds.minX,
+                                 y: button.isFlipped ? bounds.maxY + gap : bounds.minY - gap)
+            statusBarMenu.popUp(positioning: nil, at: anchor, in: button)
+        } else {
+            statusBarItem.menu = statusBarMenu
+            button.performClick(nil)
+        }
     }
 
     // Set menu to nil when closed so popover is re-enabled
@@ -197,11 +246,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         } else {
             if popover.isShown {
-                popover.performClose(statusBarItemButton)
+                closePopover()
             } else {
-                popover.show(relativeTo: statusBarItemButton.bounds, of: statusBarItemButton, preferredEdge: .minY)
-                NSApplication.shared.activate(ignoringOtherApps: true)
+                showPopover(relativeTo: statusBarItemButton)
             }
+        }
+    }
+
+    private func showPopover(relativeTo button: NSStatusBarButton) {
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    private func closePopover() {
+        guard popover.isShown, !popoverCloseRequested else { return }
+        popoverCloseRequested = true
+        popover.performClose(nil)
+    }
+
+    // NSPopoverDelegate
+    func popoverDidClose(_ notification: Notification) {
+        popoverCloseRequested = false
+        if #available(macOS 27, *) {
+            // The popover can close through means the menu bar cannot see (transient
+            // dismissal, the pin button). Apple's guidance is to cancel the session in that
+            // case; when the system already ended it this is a no-op.
+            statusBarItem?.expandedInterfaceSession?.cancel()
         }
     }
 
@@ -209,9 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         nowPlayingPinned.toggle()
 
         if nowPlayingPinned {
-            if popover.isShown, let button = statusBarItem.button {
-                popover.performClose(button)
-            }
+            closePopover()
             if let button = statusBarItem.button {
                 showNowPlayingWindow(relativeTo: button)
             }
@@ -228,7 +296,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     private func showNowPlayingWindow(relativeTo button: NSStatusBarButton) {
         applyNowPlayingWindowLevel()
-        let size = NSSize(width: nowPlayingWindowWidth, height: nowPlayingWindowHeight)
+        let size = savedNowPlayingWindowSize()
         if let savedOrigin = savedNowPlayingWindowOrigin() {
             nowPlayingWindow.setFrame(NSRect(origin: savedOrigin, size: size), display: true)
         } else {
@@ -243,18 +311,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func positionNowPlayingWindow(relativeTo button: NSStatusBarButton) {
         guard let buttonWindow = button.window, let screen = buttonWindow.screen else { return }
 
-        let buttonRect = button.convert(button.bounds, to: nil)
-        let screenRect = buttonWindow.convertToScreen(buttonRect)
         let windowSize = nowPlayingWindow.frame.size
         let screenFrame = screen.visibleFrame
 
-        var x = screenRect.midX - (windowSize.width / 2)
-        var y = screenRect.minY - windowSize.height - 6
+        var x: CGFloat
+        var y: CGFloat
+        if buttonWindow.frame.height > 0 {
+            let buttonRect = button.convert(button.bounds, to: nil)
+            let screenRect = buttonWindow.convertToScreen(buttonRect)
+            x = screenRect.midX - (windowSize.width / 2)
+            y = screenRect.minY - windowSize.height - 6
+        } else {
+            // macOS 27: until the system layout table has given the item a slot, the status
+            // bar window reports a zero-height placeholder frame at the screen origin, so a
+            // conversion through it would drop the window in the bottom-left corner. Anchor
+            // to the top-right of the screen instead.
+            x = screenFrame.maxX - windowSize.width - 6
+            y = screenFrame.maxY - windowSize.height - 6
+        }
 
         x = min(max(x, screenFrame.minX), screenFrame.maxX - windowSize.width)
         y = min(max(y, screenFrame.minY), screenFrame.maxY - windowSize.height)
 
         nowPlayingWindow.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    /// The remembered window size, squared and clamped to the allowed range. Programmatic
+    /// setFrame/setContentSize bypass contentMin/MaxSize, and sizes saved while the clamp
+    /// was being dropped (see setupContentView) can be out of range, so clamp on restore.
+    private func savedNowPlayingWindowSize() -> NSSize {
+        let minS = Constants.NowPlaying.minWindowSize
+        let maxS = Constants.NowPlaying.maxWindowSize
+        let side = min(max(min(nowPlayingWindowWidth, nowPlayingWindowHeight), minS), maxS)
+        return NSSize(width: side, height: side)
     }
 
     private func savedNowPlayingWindowOrigin() -> NSPoint? {
@@ -282,6 +371,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func windowWillStartLiveResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        floatingResizeDidBegin()
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
+        floatingResizeDidEnd()
+    }
+
+    // Shared by AppKit's live resize (the thin native border) and the corner grips'
+    // own resize tracking (NowPlayingWindow.trackCornerResize), which produces no
+    // live-resize notifications of its own.
+    private func floatingResizeDidBegin() {
         // Hide the transient hover overlay (and quiet position updates) during the
         // drag so the only visible content is the edge-pinned album art, which
         // tracks the resize cleanly. The overlay can't wobble if it isn't shown.
@@ -289,11 +390,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         contentViewVM.pauseTimer()
     }
 
-    func windowDidEndLiveResize(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window == nowPlayingWindow else { return }
-        storeNowPlayingWindowOrigin(window.frame.origin)
-        nowPlayingWindowWidth = window.frame.size.width
-        nowPlayingWindowHeight = window.frame.size.height
+    private func floatingResizeDidEnd() {
+        let frame = nowPlayingWindow.frame
+        storeNowPlayingWindowOrigin(frame.origin)
+        nowPlayingWindowWidth = frame.size.width
+        nowPlayingWindowHeight = frame.size.height
         contentViewVM.isResizing = false
         contentViewVM.startTimer()
     }
@@ -419,6 +520,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
 }
 
+// MARK: - macOS 27 expanded interface sessions
+
+@available(macOS 27, *)
+extension AppDelegate: NSStatusItemExpandedInterfaceDelegate {
+
+    func statusItem(_ statusItem: NSStatusItem, didBegin session: NSStatusItemExpandedInterfaceSession) {
+        guard let button = statusItem.button else {
+            session.cancel()
+            return
+        }
+        if nowPlayingPinned {
+            // The floating window is persistent, not a transient expanded interface: toggle
+            // it and hand the session straight back so the item is not held "open" in the bar.
+            toggleNowPlayingPresentation(button)
+            session.cancel()
+            return
+        }
+        // Show only. The second click on the item ends the session (below) rather than
+        // re-entering here, so no toggle logic is needed on this path.
+        guard !popover.isShown else { return }
+        showPopover(relativeTo: button)
+    }
+
+    func statusItemDidEndExpandedInterfaceSession(_ statusItem: NSStatusItem, animated: Bool) {
+        closePopover()
+    }
+}
+
 final class NowPlayingWindow: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -446,6 +575,48 @@ final class NowPlayingWindow: NSPanel {
         contentMinSize = NSSize(width: minS, height: minS)
         contentMaxSize = NSSize(width: maxS, height: maxS)
     }
+
+    // MARK: Corner resize
+
+    /// Called when a corner-grip resize starts and ends, standing in for the live-resize
+    /// notifications AppKit only sends for its own (native border) resizing.
+    var onCornerResizeBegan: (() -> Void)?
+    var onCornerResizeEnded: (() -> Void)?
+
+    /// Resizes the window from `corner`, tracking the drag that began with `mouseDown`
+    /// until the button is released (anywhere, including outside the window). The
+    /// opposite corner stays fixed and the window stays square within the size bounds.
+    func trackCornerResize(from corner: WindowCorner, with mouseDown: NSEvent) {
+        let startFrame = frame
+        let startMouse = NSEvent.mouseLocation   // screen coordinates, same space as frame
+        // Begin lazily on the first drag: a plain click on a grip must not flash the hover
+        // controls, restart the position timer or persist an unchanged frame.
+        var began = false
+        defer {
+            isTrackingCornerResize = false
+            if began { onCornerResizeEnded?() }
+        }
+        while let event = nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            if event.type == .leftMouseUp { break }
+            if !began {
+                began = true
+                isTrackingCornerResize = true
+                onCornerResizeBegan?()
+            }
+            let mouse = NSEvent.mouseLocation
+            let newFrame = CornerResize.frame(
+                start: startFrame,
+                corner: corner,
+                delta: CGVector(dx: mouse.x - startMouse.x, dy: mouse.y - startMouse.y),
+                minSide: Constants.NowPlaying.minWindowSize,
+                maxSide: Constants.NowPlaying.maxWindowSize)
+            setFrame(newFrame, display: true)
+        }
+    }
+
+    /// True while trackCornerResize is running. AppKit's `inLiveResize` is only set for its
+    /// own border resize, so SnapHostingView checks this as well.
+    private(set) var isTrackingCornerResize = false
 }
 
 /// NSHostingView that suppresses implicit Core Animation actions on its layer
@@ -454,7 +625,8 @@ final class NowPlayingWindow: NSPanel {
 /// reach because the tween is at the CALayer level).
 final class SnapHostingView<Content: View>: NSHostingView<Content> {
     override func layout() {
-        if inLiveResize {
+        let resizing = inLiveResize || (window as? NowPlayingWindow)?.isTrackingCornerResize == true
+        if resizing {
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             super.layout()

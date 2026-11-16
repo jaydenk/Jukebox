@@ -29,6 +29,11 @@ enum Constants {
         static let maxWindowSize: CGFloat = 360
         static let cornerRadius: CGFloat = 12
         static let controlPadding: CGFloat = 10
+        // Corner resize grips
+        static let gripRevealRadius: CGFloat = 48   // cursor distance from a corner that reveals its grip
+        static let gripHitSize: CGFloat = 24        // square grab area at each corner
+        static let gripInset: CGFloat = 4           // grip arc inset from the window edge
+        static let gripStrokeWidth: CGFloat = 3
     }
     
     enum Spotify {

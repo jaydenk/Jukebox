@@ -38,11 +38,11 @@ struct MetalView: NSViewRepresentable {
     func updateNSView(_ mtkView: MTKView, context: Context) {
         if (popoverIsShown) {
             mtkView.isPaused = false
-            print("Drawing shader...")
+            Log.general.debug("Metal view resumed")
         } else {
             mtkView.enableSetNeedsDisplay = false
             mtkView.isPaused = true
-            print("Pausing shader...")
+            Log.general.debug("Metal view paused")
         }
     }
     
@@ -98,7 +98,7 @@ extension MetalView {
             do {
                 computePipelineState = try device.makeComputePipelineState(function: computeFunction)
             } catch let error {
-                print("Error creating pipline: \(error)")
+                Log.general.error("Error creating Metal pipeline: \(error)")
             }
         }
         

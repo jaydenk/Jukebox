@@ -23,7 +23,7 @@ class OnboardingWindow: NSWindow {
     }
     
     deinit {
-        print("Destroying onboarding window")
+        Log.general.debug("Onboarding window destroyed")
     }
     
 }
