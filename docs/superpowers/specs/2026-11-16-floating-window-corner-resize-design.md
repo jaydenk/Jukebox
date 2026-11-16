@@ -1,7 +1,7 @@
 # Floating Window Corner Resize Grips — Design
 
 - **Date:** 2026-11-16
-- **Status:** Approved (2026-11-16)
+- **Status:** Implemented in 8310fea (v1.3.5, 2026-11-16) — manual pass on macOS 27; not yet released
 - **Branch:** `chore/macos-27-compat`
 - **Target release:** v1.3.5
 - **Size:** small change (short design)

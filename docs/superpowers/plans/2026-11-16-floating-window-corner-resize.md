@@ -44,7 +44,7 @@
     - `static func frame(start: CGRect, corner: WindowCorner, delta: CGVector, minSide: CGFloat, maxSide: CGFloat) -> CGRect` — **AppKit screen coordinates (y up)**; `delta` = current mouse − mouse at press.
     - `static func corner(near point: CGPoint, in size: CGSize, within radius: CGFloat) -> WindowCorner?` — **SwiftUI view coordinates (origin top-left, y down)**; Euclidean distance to the corner point, `<= radius`; nearest corner wins.
 
-- [ ] **Step 1: Write the failing verify script** `scripts/verify-corner-resize.swift`, same `expect`/`@main` shape as `scripts/verify-logging.swift`, header comment with the run command below. Assertions (start = `CGRect(x: 100, y: 100, width: 240, height: 240)`, min 200, max 360):
+- [x] **Step 1: Write the failing verify script** `scripts/verify-corner-resize.swift`, same `expect`/`@main` shape as `scripts/verify-logging.swift`, header comment with the run command below. Assertions (start = `CGRect(x: 100, y: 100, width: 240, height: 240)`, min 200, max 360):
   - bottomRight, delta `(40, -40)` → `CGRect(x: 100, y: 60, width: 280, height: 280)` (top edge fixed at 340)
   - topLeft, delta `(-30, 10)` → `CGRect(x: 70, y: 100, width: 270, height: 270)` (bottom-right fixed)
   - topRight, delta `(500, 500)` → width/height `360`, origin `(100, 100)`
@@ -54,12 +54,12 @@
   - `corner(near:)`, size 240, radius 48: `(10, 10)` → `.topLeft`; `(230, 230)` → `.bottomRight`; `(230, 10)` → `.topRight`; `(10, 230)` → `.bottomLeft`; `(120, 120)` → `nil`; `(40, 40)` → `nil` (56.6 > 48)
   - size 200: `(100, 5)` → `nil` (no zone reaches the mid-edge)
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `swiftc Jukebox/Utilities/CornerResize.swift scripts/verify-corner-resize.swift -o "$TMPDIR/verify-corner-resize" && "$TMPDIR/verify-corner-resize"`
 Expected: compile error (`CornerResize.swift` missing / `WindowCorner` not found).
 
-- [ ] **Step 3: Implement `CornerResize.swift`** (Foundation only). Algorithm for `frame` (not determined by the signature):
+- [x] **Step 3: Implement `CornerResize.swift`** (Foundation only). Algorithm for `frame` (not determined by the signature):
 
 ```swift
 let sx: CGFloat = (corner == .topRight || corner == .bottomRight) ? 1 : -1   // outward x
@@ -72,9 +72,9 @@ let y = sy > 0 ? start.minY : start.maxY - side
 return CGRect(x: x, y: y, width: side, height: side)
 ```
 
-- [ ] **Step 4: Run the script to verify it passes** — same command; Expected: exits 0, no `FAIL:` output.
+- [x] **Step 4: Run the script to verify it passes** — same command; Expected: exits 0, no `FAIL:` output.
 
-- [ ] **Step 5: Add to the Xcode target** (pbxproj, per Global Constraints) and confirm: `xcodebuild -project Jukebox.xcodeproj -scheme Jukebox -configuration Release -derivedDataPath "$TMPDIR/dd" build | grep -E "BUILD (SUCCEEDED|FAILED)"` → `BUILD SUCCEEDED`.
+- [x] **Step 5: Add to the Xcode target** (pbxproj, per Global Constraints) and confirm: `xcodebuild -project Jukebox.xcodeproj -scheme Jukebox -configuration Release -derivedDataPath "$TMPDIR/dd" build | grep -E "BUILD (SUCCEEDED|FAILED)"` → `BUILD SUCCEEDED`.
 
 ---
 
@@ -90,13 +90,13 @@ return CGRect(x: x, y: y, width: side, height: side)
   - `var onCornerResizeEnded: (() -> Void)?`
   - `func trackCornerResize(from corner: WindowCorner, with mouseDown: NSEvent)`
 
-- [ ] **Step 1: Extract shared resize begin/end in `AppDelegate`:** `private func floatingResizeDidBegin()` (sets `contentViewVM.isResizing = true`, `pauseTimer()`) and `private func floatingResizeDidEnd()` (stores origin + width/height from `nowPlayingWindow.frame`, `isResizing = false`, `startTimer()`). `windowWillStartLiveResize` / `windowDidEndLiveResize` call them; behaviour unchanged.
+- [x] **Step 1: Extract shared resize begin/end in `AppDelegate`:** `private func floatingResizeDidBegin()` (sets `contentViewVM.isResizing = true`, `pauseTimer()`) and `private func floatingResizeDidEnd()` (stores origin + width/height from `nowPlayingWindow.frame`, `isResizing = false`, `startTimer()`). `windowWillStartLiveResize` / `windowDidEndLiveResize` call them; behaviour unchanged.
 
-- [ ] **Step 2: Implement `trackCornerResize`:** record `frame` and `NSEvent.mouseLocation` (screen coords), call `onCornerResizeBegan`, loop on `nextEvent(matching: [.leftMouseDragged, .leftMouseUp])`: on drag `setFrame(CornerResize.frame(…, delta: current − start, minSide: Constants.NowPlaying.minWindowSize, maxSide: Constants.NowPlaying.maxWindowSize), display: true)`; on **any** `.leftMouseUp` break; then call `onCornerResizeEnded`.
+- [x] **Step 2: Implement `trackCornerResize`:** record `frame` and `NSEvent.mouseLocation` (screen coords), call `onCornerResizeBegan`, loop on `nextEvent(matching: [.leftMouseDragged, .leftMouseUp])`: on drag `setFrame(CornerResize.frame(…, delta: current − start, minSide: Constants.NowPlaying.minWindowSize, maxSide: Constants.NowPlaying.maxWindowSize), display: true)`; on **any** `.leftMouseUp` break; then call `onCornerResizeEnded`.
 
-- [ ] **Step 3: Wire callbacks in `setupContentView`** after creating `nowPlayingWindow`: `onCornerResizeBegan = { [weak self] in self?.floatingResizeDidBegin() }`, `onCornerResizeEnded = { [weak self] in self?.floatingResizeDidEnd() }`.
+- [x] **Step 3: Wire callbacks in `setupContentView`** after creating `nowPlayingWindow`: `onCornerResizeBegan = { [weak self] in self?.floatingResizeDidBegin() }`, `onCornerResizeEnded = { [weak self] in self?.floatingResizeDidEnd() }`.
 
-- [ ] **Step 4: Build** — command from Task 1 Step 5 → `BUILD SUCCEEDED`, no new warnings (`grep "warning:" | grep -v SourcePackages | grep -v appintentsmetadata` empty).
+- [x] **Step 4: Build** — command from Task 1 Step 5 → `BUILD SUCCEEDED`, no new warnings (`grep "warning:" | grep -v SourcePackages | grep -v appintentsmetadata` empty).
 
 ---
 
@@ -113,13 +113,13 @@ return CGRect(x: x, y: y, width: side, height: side)
   - `Constants.NowPlaying.gripRevealRadius = 48`, `gripHitSize = 24`, `gripInset = 4`, `gripStrokeWidth = 3`
   - `struct CornerResizeGrip: View { let corner: WindowCorner; let isVisible: Bool; let onTrackingChanged: (Bool) -> Void }`
 
-- [ ] **Step 1: `CornerResizeGrip`** = ZStack of (a) a `Shape` drawing a quarter-arc of radius `cornerRadius` inset `gripInset` at `corner`, stroked `gripStrokeWidth`, `Color.white.opacity(0.85)`, `.shadow(radius: 2)`, `.opacity(isVisible ? 1 : 0)`, `.allowsHitTesting(false)`; (b) an `NSViewRepresentable` grab view filling the `gripHitSize` square whose `mouseDown` calls `onTrackingChanged(true)`, `(window as? NowPlayingWindow)?.trackCornerResize(from: corner, with: event)`, then `onTrackingChanged(false)`. Grab view: `acceptsFirstMouse` → `true`; `mouseDownCanMoveWindow` → `false`; does **not** override `rightMouseDown` (context menu must reach the hosting view); `resetCursorRects` adds the frame-resize cursor for `corner` inside `if #available(macOS 15, *)` (verify the exact Swift spelling of `+[NSCursor frameResizeCursorFromPosition:inDirections:]` in the 27.2 SDK swiftinterface; directions = all).
+- [x] **Step 1: `CornerResizeGrip`** = ZStack of (a) a `Shape` drawing a quarter-arc of radius `cornerRadius` inset `gripInset` at `corner`, stroked `gripStrokeWidth`, `Color.white.opacity(0.85)`, `.shadow(radius: 2)`, `.opacity(isVisible ? 1 : 0)`, `.allowsHitTesting(false)`; (b) an `NSViewRepresentable` grab view filling the `gripHitSize` square whose `mouseDown` calls `onTrackingChanged(true)`, `(window as? NowPlayingWindow)?.trackCornerResize(from: corner, with: event)`, then `onTrackingChanged(false)`. Grab view: `acceptsFirstMouse` → `true`; `mouseDownCanMoveWindow` → `false`; does **not** override `rightMouseDown` (context menu must reach the hosting view); `resetCursorRects` adds the frame-resize cursor for `corner` inside `if #available(macOS 15, *)` (verify the exact Swift spelling of `+[NSCursor frameResizeCursorFromPosition:inDirections:]` in the 27.2 SDK swiftinterface; directions = all).
 
-- [ ] **Step 2: Reveal state in `NowPlayingCompactView`:** `@State nearCorner: WindowCorner?`, `@State activeCorner: WindowCorner?`, `@State viewSize: CGSize` (captured with a `GeometryReader` in `.background`). Add `.onContinuousHover { phase in … }` on the root: `.active(p)` → `CornerResize.corner(near: p, in: viewSize, within: Constants.NowPlaying.gripRevealRadius)`, `.ended` → `nil`; apply changes `withAnimation(.easeOut(duration: newValue != nil ? 0.12 : 0.4))`.
+- [x] **Step 2: Reveal state in `NowPlayingCompactView`:** `@State nearCorner: WindowCorner?`, `@State activeCorner: WindowCorner?`, `@State viewSize: CGSize` (captured with a `GeometryReader` in `.background`). Add `.onContinuousHover { phase in … }` on the root: `.active(p)` → `CornerResize.corner(near: p, in: viewSize, within: Constants.NowPlaying.gripRevealRadius)`, `.ended` → `nil`; apply changes `withAnimation(.easeOut(duration: newValue != nil ? 0.12 : 0.4))`.
 
-- [ ] **Step 3: Layer the grips** as the last children of the root `ZStack` (above the hover controls): `ForEach(WindowCorner.allCases)` → `CornerResizeGrip(corner:, isVisible: nearCorner == c || activeCorner == c, onTrackingChanged: { activeCorner = $0 ? c : nil })` framed `gripHitSize` square and aligned to its corner with `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment:)`. Shown whether or not a track is playing.
+- [x] **Step 3: Layer the grips** as the last children of the root `ZStack` (above the hover controls): `ForEach(WindowCorner.allCases)` → `CornerResizeGrip(corner:, isVisible: nearCorner == c || activeCorner == c, onTrackingChanged: { activeCorner = $0 ? c : nil })` framed `gripHitSize` square and aligned to its corner with `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment:)`. Shown whether or not a track is playing.
 
-- [ ] **Step 4: Build** (pbxproj updated) → `BUILD SUCCEEDED`, zero new warnings; re-run the Task 1 verify script → exits 0.
+- [x] **Step 4: Build** (pbxproj updated) → `BUILD SUCCEEDED`, zero new warnings; re-run the Task 1 verify script → exits 0.
 
 ---
 
@@ -129,8 +129,42 @@ return CGRect(x: x, y: y, width: side, height: side)
 - Modify: `Jukebox/JukeboxApp.swift` (remove every `[diag]` line and the diagnostic-only overrides: `NowPlayingWindow.sendEvent`, `SnapHostingView.setFrameSize`, `popoverShouldClose`, `windowWillResize(_:to:)`, `windowWillMove`, `windowDidResize`; keep the `popUp(positioning:at:in:)` menu fix, the container view, `savedNowPlayingWindowSize()`)
 - Modify: `README.md` (v1.3.5 changelog), `docs/superpowers/specs/2026-06-02-floating-window-enhancements-design.md` (status line → shipped in v1.3.0), `TODO.md` (gitignored)
 
-- [ ] **Step 1: Remove instrumentation** — `grep -n "\[diag\]" Jukebox/JukeboxApp.swift` returns nothing.
-- [ ] **Step 2: README v1.3.5 entries** (Australian English): corner resize grips; floating window can be dragged to move again; floating window stays within its size limits and no longer crashes while resizing; right-click menu opens below the menu bar on macOS 27.
-- [ ] **Step 3: Clean Release build** → `BUILD SUCCEEDED`, zero compiler warnings; verify script exits 0.
-- [ ] **Step 4: Jayden's manual pass** (spec Verification 1–5, plus Review Focus 3 and 4).
-- [ ] **Step 5: Commit** everything on `chore/macos-27-compat` (macOS 27 work, fixes, grips, spec/plan docs incl. the two untracked June floating-window docs; never `TODO.md` or `xcuserstate`), message per user rules (no co-author/session trailers).
+- [x] **Step 1: Remove instrumentation** — `grep -n "\[diag\]" Jukebox/JukeboxApp.swift` returns nothing.
+- [x] **Step 2: README v1.3.5 entries** (Australian English): corner resize grips; floating window can be dragged to move again; floating window stays within its size limits and no longer crashes while resizing; right-click menu opens below the menu bar on macOS 27.
+- [x] **Step 3: Clean Release build** → `BUILD SUCCEEDED`, zero compiler warnings; verify script exits 0.
+- [x] **Step 4: Jayden's manual pass** (spec Verification 1–5, plus Review Focus 3 and 4).
+- [x] **Step 5: Commit** everything on `chore/macos-27-compat` (macOS 27 work, fixes, grips, spec/plan docs incl. the two untracked June floating-window docs; never `TODO.md` or `xcuserstate`), message per user rules (no co-author/session trailers).
+
+---
+
+## Outcome (2026-11-16)
+
+Executed inline (native) on `chore/macos-27-compat`; committed as `8310fea` with the
+macOS 27 work. Verify script passes; Release build has zero warnings; Jayden's manual
+pass on macOS 27 passed (reveal, resize + bounds, cursor, release outside window,
+right-click on a grip, move/controls/scrub bar).
+
+**Rulings made during execution**
+- `CornerResize.swift` imports CoreGraphics as well as Foundation (`CGRect.width`/`minX`
+  live there); still AppKit/SwiftUI-free, so the verify script compiles it standalone.
+- No automated test for `trackCornerResize` or the grip view — AppKit event/layout code,
+  no test target; covered by the geometry script plus the manual pass.
+- Resize cursor uses an `.activeAlways` cursor-update tracking area instead of
+  `resetCursorRects` — cursor rects only apply in the key window and the panel often isn't key.
+- Grip arc radius = `cornerRadius − gripInset` (8 pt) with 6 pt straight tails.
+
+**Final review** (fresh reviewer): 0 Critical, 2 Important — both fixed before commit:
+- I1: corner resize bypassed `SnapHostingView`'s animation suppression →
+  `NowPlayingWindow.isTrackingCornerResize`, checked in `SnapHostingView.layout()`.
+- I2: a plain click on a grip ran the resize begin/end cycle → resize begins lazily on the
+  first drag and ends only if it began.
+
+**Deferred minors** (not fixed; candidates for a later release)
+- M1 Size jumps when the dominant axis flips while dragging against the diagonal.
+- M2 Tracking loop has no fallback if the system swallows the mouse-up (stays modal until the next click).
+- M3 Resize start point read from `NSEvent.mouseLocation` rather than the mouse-down event.
+- M4 Growing from a top corner isn't clamped to the screen's visible frame (can go under the menu bar).
+- M5 The grab view's transparent outer corner tip may pass clicks to the window behind.
+- M6 `popoverCloseRequested` could stay true if `popoverDidClose` never fires.
+- M7 On macOS 27, right-click doesn't close an open popover before showing the menu.
+- M9 Grip can stay visible after releasing outside the window until the next mouse move.
