@@ -152,9 +152,6 @@ struct ContentView: View {
                 .padding()
             }
         }
-        .onReceive(contentViewVM.timer) { _ in
-            contentViewVM.getCurrentSeekerPosition()
-        }
     }
 
     private var pinButton: some View {

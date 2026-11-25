@@ -35,6 +35,11 @@ Clicking the button next to the connect option gives you the prompt to connect t
 
 ## Changelog
 
+### v1.3.6
+
+- **Idle CPU fix** — Jukebox no longer uses around a third of a CPU core while sitting in the menu bar with Spotify or Apple Music closed. A position timer ran from launch and repeatedly asked the system whether the music app was running; that state is now tracked from launch and quit notifications instead
+- **Lighter menu bar animation** — the menu bar item now redraws only as often as it needs to (30 fps while a long title scrolls, 12 fps for the bars, once a second for the progress line alone), roughly halving CPU use during playback
+
 ### v1.3.5
 
 - **macOS 27 menu bar** — the menu bar item now uses the macOS 27 expanded interface session API, so the now playing popover takes part in keyboard navigation and menu tracking (slide from Jukebox to a neighbouring item and it switches like a menu). Earlier macOS versions keep the existing behaviour

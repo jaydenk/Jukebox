@@ -75,6 +75,7 @@ class StatusBarAnimator {
 
     private weak var button: NSStatusBarButton?
     private var animationTimer: Timer?
+    private var animationInterval: TimeInterval?
     private var barStartTime: CFTimeInterval = 0
     private var scrollStartTime: CFTimeInterval = 0
     private var scrollDelayTimer: DispatchWorkItem?
@@ -167,22 +168,38 @@ class StatusBarAnimator {
 
     // MARK: - Timer management
 
-    private func updateTimerState() {
-        let needsAnimationTimer = animationsEnabled && (playbackState == .playing || isActivelyScrolling)
-        let needsProgressTimer = showPlaybackProgress && playbackState == .playing && trackDuration > 0
-        let needsTimer = needsAnimationTimer || needsProgressTimer
+    // Every frame makes AppKit redraw and re-tint the whole status item image, and that
+    // fixed per-frame cost dominates CPU use. So redraw only as often as the fastest thing
+    // currently moving needs: the marquee (smooth motion), then the bars, then the
+    // progress line, which creeps by a pixel every few seconds.
+    private enum FrameRate {
+        static let marquee: TimeInterval = 1.0 / 30.0
+        static let bars: TimeInterval = 1.0 / 12.0
+        static let progressOnly: TimeInterval = 1.0
+    }
 
-        if needsTimer {
-            guard animationTimer == nil else { return }
-            let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-                self?.renderFrame()
-            }
-            RunLoop.main.add(timer, forMode: .common)
-            animationTimer = timer
-        } else {
-            animationTimer?.invalidate()
-            animationTimer = nil
+    private var requiredFrameInterval: TimeInterval? {
+        if animationsEnabled && isActivelyScrolling { return FrameRate.marquee }
+        guard playbackState == .playing else { return nil }
+        if animationsEnabled { return FrameRate.bars }
+        if showPlaybackProgress && trackDuration > 0 { return FrameRate.progressOnly }
+        return nil
+    }
+
+    private func updateTimerState() {
+        let interval = requiredFrameInterval
+        guard interval != animationInterval else { return }
+
+        animationTimer?.invalidate()
+        animationTimer = nil
+        animationInterval = interval
+
+        guard let interval else { return }
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            self?.renderFrame()
         }
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
     }
 
     // MARK: - Rendering

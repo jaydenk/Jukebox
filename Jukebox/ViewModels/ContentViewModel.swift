@@ -20,9 +20,16 @@ class ContentViewModel: ObservableObject {
         connectedApp == .spotify ? Constants.Spotify.name : Constants.AppleMusic.name
     }
     
-    var isRunning: Bool {
-        connectedApp == .spotify ? spotifyApp?.isRunning ?? false : appleMusicApp?.isRunning ?? false
+    private var bundleID: String {
+        connectedApp == .spotify ? Constants.Spotify.bundleID : Constants.AppleMusic.bundleID
     }
+
+    // Whether the connected music app is running. This is a cached value kept current by
+    // NSWorkspace launch/terminate notifications rather than a live ScriptingBridge query:
+    // `SBApplication.isRunning` walks every running application through LaunchServices
+    // when its target is NOT running (hundreds of milliseconds per call), so asking it on
+    // a timer pinned a CPU core whenever the music app was closed.
+    @Published private(set) var isRunning = false
     
     var notification: String {
         connectedApp == .spotify ? Constants.Spotify.notification : Constants.AppleMusic.notification
@@ -37,20 +44,26 @@ class ContentViewModel: ObservableObject {
     @Published var isLoved = false
     
     // Seeker
-    @Published var timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     @Published var trackDuration: Double = 0
     @Published var seekerPosition: Double = 0
     @Published var isScrubbing = false
     @Published var isResizing = false
+
+    // Seeker position poll. Runs only while a now-playing surface (popover or floating
+    // window) is on screen; it is created stopped and owned here, not by the views.
+    private var seekerTimer: Timer?
+    private let seekerInterval: TimeInterval = 0.1
 
     // Menu bar progress re-anchor poll (runs independently of the popover)
     private var menuBarProgressTimer: Timer?
     private let menuBarProgressInterval: TimeInterval = 1.0
 
     private var observer: NSKeyValueObservation?
+    private var workspaceObservers: [NSObjectProtocol] = []
     
     init() {
         setupMusicApps()
+        refreshIsRunning()
         setupObservers()
         guard isRunning else { return }
         playStateOrTrackDidChange(nil)
@@ -58,6 +71,8 @@ class ContentViewModel: ObservableObject {
     
     deinit {
         observer?.invalidate()
+        workspaceObservers.forEach(NSWorkspace.shared.notificationCenter.removeObserver)
+        pauseTimer()
         stopMenuBarProgressUpdates()
     }
     
@@ -86,7 +101,21 @@ class ContentViewModel: ObservableObject {
                 object: nil,
                 suspensionBehavior: .deliverImmediately)
             self.setupMusicApps()
+            self.refreshIsRunning()
             self.playStateOrTrackDidChange(nil)
+        }
+
+        // Track whether the connected music app is running (see `isRunning`).
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+        workspaceObservers = [
+            (NSWorkspace.didLaunchApplicationNotification, false),
+            (NSWorkspace.didTerminateApplicationNotification, true),
+        ].map { name, isTermination in
+            workspaceCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                guard let self, app?.bundleIdentifier == self.bundleID else { return }
+                self.refreshIsRunning(excluding: isTermination ? app : nil)
+            }
         }
                 
         // ScriptingBridge Observer
@@ -113,10 +142,31 @@ class ContentViewModel: ObservableObject {
         
     }
     
+    // MARK: - Running State
+
+    // Re-reads the running-application list rather than trusting which notification
+    // arrived: Spotify launches through a short-lived stub process that terminates as the
+    // real one starts, so launch/terminate notifications are not a simple on/off pair.
+    // `terminated` is the process a terminate notification is reporting, which may still
+    // be listed while that notification is delivered.
+    private func refreshIsRunning(excluding terminated: NSRunningApplication? = nil) {
+        let apps = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        setIsRunning(apps.contains {
+            !$0.isTerminated && $0.processIdentifier != terminated?.processIdentifier
+        })
+    }
+
+    private func setIsRunning(_ running: Bool) {
+        guard isRunning != running else { return }
+        Log.general.info("\(name) is \(running ? "running" : "not running")")
+        isRunning = running
+    }
+
     // MARK: - Notification Handlers
     
     @objc func playStateOrTrackDidChange(_ sender: NSNotification?) {
         setupMusicApps()
+        refreshIsRunning()
         guard isRunning, sender?.userInfo?["Player State"] as? String != "Stopped" else {
             self.isPlaying = false
             self.track.title = ""
@@ -371,7 +421,6 @@ class ContentViewModel: ObservableObject {
 
     /// Snapshot of current app/track state for the exported diagnostics header.
     func currentDiagnostics() -> DiagnosticsReport {
-        let bundleID = connectedApp == .spotify ? Constants.Spotify.bundleID : Constants.AppleMusic.bundleID
         let permission = Helper.promptUserForConsent(for: bundleID)
         let trackSource: String
         switch connectedApp {
@@ -546,11 +595,17 @@ class ContentViewModel: ObservableObject {
     }
     
     func startTimer() {
-        timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+        guard seekerTimer == nil else { return }
+        let timer = Timer(timeInterval: seekerInterval, repeats: true) { [weak self] _ in
+            self?.getCurrentSeekerPosition()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        seekerTimer = timer
     }
     
     func pauseTimer() {
-        timer.upstream.connect().cancel()
+        seekerTimer?.invalidate()
+        seekerTimer = nil
     }
     
     @objc private func popoverIsOpening(_ notification: NSNotification) {

@@ -131,9 +131,6 @@ struct NowPlayingCompactView: View {
                 nearCorner = corner
             }
         }
-        .onReceive(contentViewVM.timer) { _ in
-            contentViewVM.getCurrentSeekerPosition()
-        }
         .contextMenu {
             Button("Unpin") {
                 NSApplication.shared.sendAction(#selector(AppDelegate.togglePinnedMode), to: nil, from: nil)
