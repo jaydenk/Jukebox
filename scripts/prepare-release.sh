@@ -8,7 +8,8 @@
 # This script will:
 #   1. Read the version from the app bundle
 #   2. Create a signed zip archive
-#   3. Update docs/appcast.xml with the correct GitHub Releases URL
+#   3. Update docs/appcast.xml with the correct GitHub Releases URL and the
+#      release notes taken from the GitHub release
 #   4. Upload the zip to the GitHub release
 #   5. Commit and push the updated appcast
 #
@@ -16,6 +17,8 @@
 #   - Sparkle signing key in Keychain (set up via generate_keys)
 #   - gh CLI authenticated
 #   - App already archived and exported from Xcode
+#   - GitHub release vX.Y.Z already created, with its notes written — they become the
+#     release notes shown in Sparkle's update prompt
 
 set -euo pipefail
 
@@ -56,6 +59,30 @@ fi
 
 echo "==> Preparing release v$VERSION (build $BUILD)"
 
+# Release notes. The GitHub release is the single source: its Markdown body is rendered
+# to HTML by GitHub and embedded in the appcast <description>, which Sparkle shows in the
+# update prompt. Checked before anything is built or uploaded so a release cannot ship
+# with an empty prompt.
+echo "==> Fetching release notes from GitHub release v$VERSION..."
+if ! NOTES_MARKDOWN=$(gh release view "v$VERSION" --repo "$REPO" --json body --jq .body 2>/dev/null); then
+    echo "Error: GitHub release v$VERSION does not exist."
+    echo "Create it first: gh release create v$VERSION --repo $REPO --target main --title 'v$VERSION' --notes '…'"
+    exit 1
+fi
+if [ -z "${NOTES_MARKDOWN//[[:space:]]/}" ]; then
+    echo "Error: GitHub release v$VERSION has no notes."
+    echo "Add them first: gh release edit v$VERSION --repo $REPO --notes '…'"
+    exit 1
+fi
+NOTES_HTML=$(gh api markdown -f text="$NOTES_MARKDOWN" -f mode=gfm -f context="$REPO")
+if [ -z "$NOTES_HTML" ] || [[ "$NOTES_HTML" == *"]]>"* ]]; then
+    echo "Error: could not render the release notes to HTML safe for embedding in the appcast."
+    exit 1
+fi
+NOTES_STYLE='<style>body { font-family: -apple-system, sans-serif; font-size: 13px; }</style>'
+RELEASE_URL="https://github.com/$REPO/releases/tag/v$VERSION"
+echo "    $(echo "$NOTES_MARKDOWN" | grep -c .) lines of notes"
+
 # Create zip
 ZIP_NAME="Jukebox-$VERSION.zip"
 ZIP_PATH="$REPO_DIR/$ZIP_NAME"
@@ -95,6 +122,11 @@ cat > "$APPCAST_PATH" << APPCAST_EOF
             <sparkle:version>$VERSION</sparkle:version>
             <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>$MIN_SYSTEM_VERSION</sparkle:minimumSystemVersion>
+            <sparkle:fullReleaseNotesLink>https://github.com/$REPO/releases</sparkle:fullReleaseNotesLink>
+            <description><![CDATA[
+$NOTES_STYLE
+$NOTES_HTML
+]]></description>
             <enclosure url="$DOWNLOAD_URL" length="$ZIP_SIZE" type="application/octet-stream" sparkle:edSignature="$ED_SIGNATURE"/>
         </item>
     </channel>
@@ -105,13 +137,6 @@ echo "    Download URL: $DOWNLOAD_URL"
 
 # Upload zip to GitHub release
 echo "==> Uploading to GitHub release v$VERSION..."
-if ! gh release view "v$VERSION" --repo "$REPO" &>/dev/null; then
-    echo "Error: GitHub release v$VERSION does not exist."
-    echo "Create it first: gh release create v$VERSION --repo $REPO --title 'v$VERSION'"
-    rm "$ZIP_PATH"
-    exit 1
-fi
-
 # Remove existing asset if re-running
 gh release upload "v$VERSION" "$ZIP_PATH" --repo "$REPO" --clobber
 echo "    Uploaded $ZIP_NAME"
@@ -144,4 +169,4 @@ echo "    appcast for v$VERSION confirmed on origin/main"
 echo ""
 echo "==> Release v$VERSION complete!"
 echo "    Appcast: https://jaydenk.github.io/Jukebox/appcast.xml"
-echo "    Release: https://github.com/$REPO/releases/tag/v$VERSION"
+echo "    Release: $RELEASE_URL"
